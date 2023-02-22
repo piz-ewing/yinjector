@@ -18,3 +18,8 @@ cargo b --target=x86_64-pc-windows-msvc
     "c.exe":"c:/1.dll"
 ]
 ```
+## run
+
+```
+./injector.exe [config_path]
+```
