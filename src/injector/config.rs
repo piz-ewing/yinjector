@@ -38,8 +38,7 @@ impl Config {
                 .unwrap()
                 .parent()
                 .unwrap()
-                .join(&dll_path)
-                .to_owned();
+                .join(&dll_path);
             if abs_dll_path.is_file() {
                 let abs_dll_path = abs_dll_path
                     .canonicalize()
@@ -63,8 +62,8 @@ impl Config {
 
     pub fn get(&self, process_name: &String) -> String {
         let info = self.info.get::<_>(process_name);
-        if info.is_some() {
-            info.unwrap().to_owned()
+        if let Some(info) = info {
+            info.to_owned()
         } else {
             String::new()
         }

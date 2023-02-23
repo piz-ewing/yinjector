@@ -159,33 +159,19 @@ impl Injector {
             .unwrap()
             .parent()
             .unwrap()
-            .join("config.json")
-            .to_owned();
+            .join("config.json");
+
         if config_path.is_file() {
-            let config_path = adjust_canonicalization(
-                config_path
-                    .canonicalize()
-                    .unwrap()
-                    .to_str()
-                    .unwrap()
-                    .to_string(),
-            );
+            let config_path =
+                adjust_canonicalization(config_path.canonicalize().unwrap().to_str().unwrap());
             return Ok(config_path);
         }
 
-        let config_path = std::env::current_dir()
-            .unwrap()
-            .join("config.json")
-            .to_owned();
+        let config_path = std::env::current_dir().unwrap().join("config.json");
+
         if config_path.is_file() {
-            let config_path = adjust_canonicalization(
-                config_path
-                    .canonicalize()
-                    .unwrap()
-                    .to_str()
-                    .unwrap()
-                    .to_string(),
-            );
+            let config_path =
+                adjust_canonicalization(config_path.canonicalize().unwrap().to_str().unwrap());
             return Ok(config_path);
         }
 
@@ -194,15 +180,14 @@ impl Injector {
 
     pub fn build(&mut self, cfg_path: Option<String>) -> Result<&mut Self, String> {
         // check file exist
-        let cfg_file = if cfg_path.is_none() {
-            self.get_config_file()?
-        } else {
-            let cfg_path = cfg_path.unwrap();
-            let cfg_path = Path::new(&cfg_path);
-            if !cfg_path.is_file() {
+        let cfg_file = if let Some(s) = cfg_path {
+            let p = Path::new(&s);
+            if !p.is_file() {
                 return Err("config file not exist".to_string());
             }
-            adjust_canonicalization(cfg_path.canonicalize().unwrap().to_str().unwrap())
+            adjust_canonicalization(p.canonicalize().unwrap().to_str().unwrap())
+        } else {
+            self.get_config_file()?
         };
 
         info!("[+] config path -> {:?}", cfg_file);
@@ -242,6 +227,7 @@ impl Injector {
         loop {
             self.ic += 1;
 
+            // FIXME: monitor should not implement the iterator trait
             let m = Monitor::new();
             for p in m {
                 let dll_path = self.cfg.get(&p.name);
@@ -265,13 +251,12 @@ impl Injector {
 
             self.rec = self
                 .rec
-                .to_owned()
-                .into_iter()
+                .iter()
                 .filter_map(|(k, v)| {
-                    if v == self.ic {
-                        Some((k, v))
+                    if *v == self.ic {
+                        Some((*k, *v))
                     } else {
-                        info!("[-] process destory: {}", k);
+                        info!("[-] process destory: {}", *k);
                         None
                     }
                 })
