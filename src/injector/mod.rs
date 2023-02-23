@@ -11,7 +11,6 @@ use log::*;
 use scopeguard::guard;
 use serde_json::Value;
 use std::{
-    collections::HashMap,
     ffi::CString,
     path::Path,
     sync::{
@@ -34,12 +33,10 @@ use windows::{
 
 pub struct Injector {
     cfg: Config,
-    rec: HashMap<u32, usize>,
-    ic: usize,
 }
 
 impl Injector {
-    fn inject(proc: Process, dll_path: String) {
+    fn inject(process: Process, dll_path: String) {
         unsafe {
             // get kernel32 module
             let kernel_module = GetModuleHandleA(s!("kernel32.dll"));
@@ -67,11 +64,15 @@ impl Injector {
                     | PROCESS_VM_WRITE
                     | PROCESS_VM_OPERATION,
                 FALSE,
-                proc.pid,
+                process.pid,
             );
 
             if h_proc.is_err() {
-                error!("[!] open {} failed, code {:?}", proc.name, GetLastError());
+                error!(
+                    "[!] open {} failed, code {:?}",
+                    process.name,
+                    GetLastError()
+                );
                 return;
             }
 
@@ -147,11 +148,7 @@ impl Injector {
     }
 
     pub fn new() -> Injector {
-        Injector {
-            cfg: Config::new(),
-            rec: HashMap::new(),
-            ic: 0,
-        }
+        Injector { cfg: Config::new() }
     }
 
     fn get_config_file(&mut self) -> Result<String, String> {
@@ -224,52 +221,28 @@ impl Injector {
 
         info!("[+] waiting for Ctrl-C...");
 
-        loop {
-            self.ic += 1;
-
-            // FIXME: monitor should not implement the iterator trait
-            let m = Monitor::new();
-            for p in m {
-                let dll_path = self.cfg.get(&p.name);
-                if dll_path.is_empty() {
-                    continue;
-                }
-
-                let v = self.rec.entry(p.pid).or_insert_with(|| {
+        Monitor::new()
+            .register(|cfg, status| match status {
+                ProcessStatus::AddProcess(process) => {
+                    let dll_path = cfg.get(&process.name);
+                    if dll_path.is_empty() {
+                        return;
+                    }
                     info!(
                         "[+] inject {} --> {} [{}]",
                         Path::new(&dll_path).file_name().unwrap().to_str().unwrap(),
-                        p.name,
-                        p.pid
+                        process.name,
+                        process.pid
                     );
-                    Injector::inject(p, dll_path);
-                    0
-                });
-
-                *v = self.ic;
-            }
-
-            self.rec = self
-                .rec
-                .iter()
-                .filter_map(|(k, v)| {
-                    if *v == self.ic {
-                        Some((*k, *v))
-                    } else {
-                        info!("[-] process destory: {}", *k);
-                        None
+                    Injector::inject(process, dll_path);
+                }
+                ProcessStatus::SubProcess(process) => {
+                    if !cfg.get(&process.name).is_empty() {
+                        info!("[-] process destory: {} [{}]", process.name, process.pid);
                     }
-                })
-                .collect();
-
-            if !running.load(Ordering::SeqCst) {
-                info!("[-] Exiting...");
-                break;
-            }
-
-            trace!("map size: {}", self.rec.len());
-            std::thread::sleep(std::time::Duration::from_secs(1));
-        }
+                }
+            })
+            .watch_dog(&self.cfg, &running);
         Ok(self)
     }
 }
