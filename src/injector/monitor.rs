@@ -12,17 +12,6 @@ use windows::Win32::{Foundation::*, System::Diagnostics::ToolHelp::*};
 
 use super::config::Config;
 
-fn wchar_arr_to_string(arr: &[CHAR]) -> String {
-    let mut result = String::new();
-    for c in arr.iter() {
-        if c.0 == 0 {
-            break;
-        }
-        result.push(c.0 as char);
-    }
-    result
-}
-
 pub struct Process {
     pub name: String,
     pub pid: u32,
@@ -53,7 +42,7 @@ impl ProcessQuerier {
 impl Drop for ProcessQuerier {
     fn drop(&mut self) {
         unsafe {
-            CloseHandle(self.h_snapshot);
+            let _ = CloseHandle(self.h_snapshot);
         }
     }
 }
@@ -68,23 +57,31 @@ impl Iterator for ProcessQuerier {
 
             if self.is_first {
                 self.is_first = false;
-                if Process32First(self.h_snapshot, &mut pe32) == FALSE {
+                if Process32First(self.h_snapshot, &mut pe32).is_err() {
                     return None;
                 }
-            } else if Process32Next(self.h_snapshot, &mut pe32) == FALSE {
+            } else if Process32Next(self.h_snapshot, &mut pe32).is_err() {
                 return None;
             }
 
+            // Find the index of the first null byte (0) in the array
+            let null_index = pe32
+                .szExeFile
+                .iter()
+                .position(|&x| x == 0)
+                .unwrap_or(pe32.szExeFile.len());
+
             Some(Process {
-                name: wchar_arr_to_string(&pe32.szExeFile),
+                name: String::from_utf8_lossy(&pe32.szExeFile[..null_index]).into_owned(),
                 pid: pe32.th32ProcessID,
             })
         }
     }
 }
 
+type CB = Box<dyn Fn(&Config, ProcessStatus)>;
 pub struct Monitor {
-    cbs: Vec<Box<dyn Fn(&Config, ProcessStatus)>>,
+    cbs: Vec<CB>,
     rec: HashMap<u32, (usize, String)>,
     ic: usize,
 }
@@ -155,7 +152,7 @@ impl Monitor {
             }
 
             trace!("map size: {}", self.rec.len());
-            std::thread::sleep(std::time::Duration::from_secs(1));
+            std::thread::sleep(std::time::Duration::from_millis(cfg.monitor_interval()));
         }
     }
 }

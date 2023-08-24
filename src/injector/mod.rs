@@ -9,7 +9,6 @@ use monitor::*;
 
 use log::*;
 use scopeguard::guard;
-use serde_json::Value;
 use std::{
     ffi::CString,
     path::Path,
@@ -21,13 +20,11 @@ use std::{
 
 // win32
 use windows::{
-    s,
+    core::s,
     Win32::{
         Foundation::*,
         Security::*,
-        System::{
-            Diagnostics::Debug::*, LibraryLoader::*, Memory::*, Threading::*, WindowsProgramming::*,
-        },
+        System::{Diagnostics::Debug::*, LibraryLoader::*, Memory::*, Threading::*},
     },
 };
 
@@ -79,7 +76,7 @@ impl Injector {
             let h_proc = h_proc.unwrap();
             let _h_proc = guard(h_proc, |h_proc| {
                 trace!("close handle");
-                CloseHandle(h_proc);
+                let _ = CloseHandle(h_proc);
             });
 
             let dll_path = CString::new(dll_path).unwrap();
@@ -97,7 +94,7 @@ impl Injector {
             );
             let _v_mem = guard(v_mem, |v_mem| {
                 trace!("free mem");
-                VirtualFreeEx(h_proc, v_mem, 0, MEM_RELEASE);
+                let _ = VirtualFreeEx(h_proc, v_mem, 0, MEM_RELEASE);
             });
 
             // write dll path 2 remote memory
@@ -107,7 +104,8 @@ impl Injector {
                 dll_path.as_ptr() as *const ::core::ffi::c_void,
                 path_len,
                 Some(std::ptr::null_mut::<usize>()),
-            ) == FALSE
+            )
+            .is_err()
             {
                 error!(
                     "[!] write remote process mem failed, code {:?}",
@@ -135,11 +133,11 @@ impl Injector {
             let h_remote_thd = h_remote_thd.unwrap();
             let _h_remote_thd = guard(h_remote_thd, |h_remote_thd| {
                 trace!("close thd");
-                CloseHandle(h_remote_thd);
+                let _ = CloseHandle(h_remote_thd);
             });
 
             // wait for thread finish
-            if WaitForSingleObject(h_remote_thd, INFINITE).is_err() {
+            if WaitForSingleObject(h_remote_thd, INFINITE) != WAIT_OBJECT_0 {
                 error!("[!] wait remote thread failed, code {:?}", GetLastError());
                 return;
             }
@@ -156,7 +154,7 @@ impl Injector {
             .unwrap()
             .parent()
             .unwrap()
-            .join("config.json");
+            .join("config.toml");
 
         if config_path.is_file() {
             let config_path =
@@ -164,7 +162,7 @@ impl Injector {
             return Ok(config_path);
         }
 
-        let config_path = std::env::current_dir().unwrap().join("config.json");
+        let config_path = std::env::current_dir().unwrap().join("config.toml");
 
         if config_path.is_file() {
             let config_path =
@@ -188,26 +186,9 @@ impl Injector {
         };
 
         info!("[+] config path -> {:?}", cfg_file);
-        let cfg_json = std::fs::read_to_string(cfg_file).map_err(|_| "read config failed")?;
+        let cfg_str = std::fs::read_to_string(cfg_file).map_err(|_| "read config failed")?;
 
-        let cfg_json: Value =
-            serde_json::from_str(&cfg_json).map_err(|_| "parser json config failed")?;
-
-        let cfg_json = cfg_json.as_object();
-        if cfg_json.is_none() {
-            return Err("json format error".to_string());
-        }
-
-        for info in cfg_json.unwrap() {
-            if info.1.is_string() {
-                self.cfg
-                    .add(info.0.to_string(), info.1.as_str().unwrap().to_string())?;
-            } else if info.1.is_object() {
-                unimplemented!();
-            } else {
-                return Err("invaild cfg".to_string());
-            }
-        }
+        config::init_config(&mut self.cfg, &cfg_str)?;
 
         Ok(self)
     }

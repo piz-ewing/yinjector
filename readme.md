@@ -11,15 +11,21 @@ cargo b --target=x86_64-pc-windows-msvc
 ```
 
 ## config
-```json
-[
-    "a.exe":"b.dll",
-    "b.exe":"../c.dll",
-    "c.exe":"c:/1.dll"
-]
+```toml
+[global]
+monitor_interval = 50
+
+[injector]
+"a.exe" = 'b.dll'
+"b.exe" = '../c.dll'
+"c.exe" = 'c:/1.dll'
+
 ```
 ## run
 
 ```
 ./injector.exe [config_path]
 ```
+
+## todo
+merge x86 and x64

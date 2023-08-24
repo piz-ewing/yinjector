@@ -1,0 +1,6 @@
+# interval 500ms
+[global]
+monitor_interval = 50
+
+[injector]
+"test.exe" = './test_helper.dll'

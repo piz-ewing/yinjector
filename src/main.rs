@@ -34,7 +34,7 @@ fn main() {
     match injector() {
         Ok(_) => (),
         Err(c) => {
-            error!("{}", c);
+            error!("[!] {}", c);
             pause()
         }
     }

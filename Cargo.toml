@@ -7,14 +7,15 @@ build = "build.rs"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-serde_json = {version="1.0.93"}
+serde = { version = "1.0", features = ["derive"] }
+toml = "0.7.6"
 log = "0.4.17"
-pretty_env_logger_custom = {path="./pretty_env_logger_custom"}
+pretty_env_logger_custom = { path = "./pretty_env_logger_custom" }
 scopeguard = "1.1.0"
 ctrlc = { version = "3.2.5", features = ["termination"] }
 
 [dependencies.windows]
-version = "0.44.0"
+version = "0.51.1"
 features = [
     "Win32_System_Diagnostics_ToolHelp",
     "Win32_Foundation",
@@ -23,7 +24,7 @@ features = [
     "Win32_System_Memory",
     "Win32_System_Diagnostics_Debug",
     "Win32_Security",
-    "Win32_System_WindowsProgramming"
+    "Win32_System_WindowsProgramming",
 ]
 
 [build-dependencies]
