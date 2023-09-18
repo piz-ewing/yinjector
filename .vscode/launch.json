@@ -7,40 +7,16 @@
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug executable 'injector'",
-            "cargo": {
-                "args": [
-                    "build",
-                    "--bin=injector",
-                    "--package=injector",
-                    "--target=i686-pc-windows-msvc"
-                ],
-                "filter": {
-                    "name": "injector",
-                    "kind": "bin"
-                }
-            },
-            "args": [
-                "./config.json"
-            ],
+            "name": "Launch (i686)",
+            "program": "${workspaceFolder}/target/i686-pc-windows-msvc/debug/injector.exe",
+            "args": [],
             "cwd": "${workspaceFolder}"
         },
         {
             "type": "lldb",
             "request": "launch",
-            "name": "Debug unit tests in executable 'injector'",
-            "cargo": {
-                "args": [
-                    "test",
-                    "--no-run",
-                    "--bin=injector",
-                    "--package=injector"
-                ],
-                "filter": {
-                    "name": "injector",
-                    "kind": "bin"
-                }
-            },
+            "name": "Launch (x86_64)",
+            "program": "${workspaceFolder}/target/x86_64-pc-windows-msvc/debug/injector.exe",
             "args": [],
             "cwd": "${workspaceFolder}"
         }

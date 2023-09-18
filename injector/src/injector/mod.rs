@@ -17,6 +17,7 @@ use std::{
         Arc,
     },
 };
+use yapi_rs::yapi;
 
 // win32
 use windows::{
@@ -33,7 +34,59 @@ pub struct Injector {
 }
 
 impl Injector {
-    fn inject(process: Process, dll_path: String) {
+    fn inject_by_yapi(process: Process, dll_path: String) {
+        unsafe {
+            // open remote process
+            let h_proc = OpenProcess(
+                PROCESS_CREATE_THREAD
+                    | PROCESS_QUERY_INFORMATION
+                    | PROCESS_VM_READ
+                    | PROCESS_VM_WRITE
+                    | PROCESS_VM_OPERATION,
+                FALSE,
+                process.pid,
+            );
+
+            if h_proc.is_err() {
+                error!(
+                    "[!] open {} failed, code {:?}",
+                    process.name,
+                    GetLastError()
+                );
+                return;
+            }
+
+            let h_proc = h_proc.unwrap();
+            let _h_proc = guard(h_proc, |h_proc| {
+                trace!("close handle");
+                let _ = CloseHandle(h_proc);
+            });
+
+            let mut is_wow64 = FALSE;
+            if IsWow64Process(h_proc, &mut is_wow64).is_err() {
+                error!("[!] IsWow64Process failed, code {:?}", GetLastError());
+                return;
+            }
+
+            let dll_path = CString::new(dll_path).unwrap();
+            if yapi::yinject(
+                h_proc.0 as *mut ::core::ffi::c_void,
+                dll_path.as_ptr() as *const ::core::ffi::c_char,
+                is_wow64.0,
+            ) == 0
+            {
+                error!("[!] yinject remote thread failed",);
+                return;
+            }
+
+            info!(
+                "[+] {} inject success",
+                if is_wow64.as_bool() { "x86" } else { "x64" }
+            );
+        }
+    }
+
+    fn _inject(process: Process, dll_path: String) {
         unsafe {
             // get kernel32 module
             let kernel_module = GetModuleHandleA(s!("kernel32.dll"));
@@ -215,7 +268,7 @@ impl Injector {
                         process.name,
                         process.pid
                     );
-                    Injector::inject(process, dll_path);
+                    Injector::inject_by_yapi(process, dll_path);
                 }
                 ProcessStatus::SubProcess(process) => {
                     if !cfg.get(&process.name).is_empty() {

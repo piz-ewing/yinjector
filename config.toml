@@ -3,4 +3,5 @@
 monitor_interval = 50
 
 [injector]
-"test.exe" = './test_helper.dll'
+"x86.exe" = '.\dlls\x86.dll'
+"x64.exe" = '.\dlls\x64.dll'

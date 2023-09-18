@@ -1,2 +1,4 @@
 /target
 /pretty_env_logger_custom/target
+/yapi-rs/target/
+dlls/*.dll

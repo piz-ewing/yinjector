@@ -1,6 +1,5 @@
 ## windows-injector
 
-
 ## build
 ```bash
 # windows-x86
@@ -19,6 +18,8 @@ monitor_interval = 50
 "a.exe" = 'b.dll'
 "b.exe" = '../c.dll'
 "c.exe" = 'c:/1.dll'
+"x86.exe"='x86.dll'
+"x64.exe"='x64.dll'
 
 ```
 ## run
@@ -28,4 +29,12 @@ monitor_interval = 50
 ```
 
 ## todo
-merge x86 and x64
+[x] merge x86 and x64 injector
+
+## ref
+
+***Maybe I'll modify it, so I don't import using subprojects***
+
+[YAPI -- Yet Another Process Injector](https://github.com/ez8-co/yapi.git) @ez8-co
+
+[pretty-env-logger](https://github.com/seanmonstar/pretty-env-logger.git) @seanmonstar

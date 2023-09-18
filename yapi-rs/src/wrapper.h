@@ -1,0 +1,1 @@
+unsigned __int64 yinject(void *hProcess, const char *dll_path, int is_wow64);
