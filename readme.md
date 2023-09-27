@@ -1,4 +1,10 @@
 ## windows-injector
+[![license](https://img.shields.io/badge/license-MIT-yellow.svg?style=flat)](https://github.com/piz-ewing/injector/blob/main/LICENSE)
+![Language](https://img.shields.io/badge/language-rust-brightgreen)
+
+- ✨ Fusion injector
+- 👍 Easy to configure
+- 🚅 Automatically monitor processes
 
 ## build
 ```bash
@@ -15,9 +21,10 @@ cargo b --target=x86_64-pc-windows-msvc
 monitor_interval = 50
 
 [injector]
-"a.exe" = 'b.dll'
-"b.exe" = '../c.dll'
-"c.exe" = 'c:/1.dll'
+"a.exe" = 'a.dll'
+"b.exe" = '../b.dll'
+"c.exe" = 'c:\c.dll'
+
 "x86.exe"='x86.dll'
 "x64.exe"='x64.dll'
 
@@ -28,8 +35,10 @@ monitor_interval = 50
 ./injector.exe [config_path]
 ```
 
+![demo](./demo.png)
+
 ## todo
-[x] merge x86 and x64 injector
+✅ ~~merge x86 and x64 injector~~
 
 ## ref
 

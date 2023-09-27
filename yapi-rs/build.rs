@@ -13,10 +13,8 @@ fn main() {
 
     let target_arch_define = if target_arch == "x86" {
         "_WIN32".to_owned()
-        // 在这里执行针对 x86 架构的操作
     } else if target_arch == "x86_64" {
         "_WIN64".to_owned()
-        // 在这里执行针对 x64 架构的操作
     } else {
         panic!("Unknown target architecture: {}", target_arch)
     };
@@ -35,7 +33,7 @@ fn main() {
         .clang_arg("-Iffi/yapi")
         .clang_arg("-D__UNICODE=1")
         .clang_arg("-D_UNICODE=1")
-        .clang_arg(std::format!("-D_{}=1", &target_arch_define)) // win32 win64
+        .clang_arg(std::format!("-D_{}=1", &target_arch_define))
         .parse_callbacks(Box::new(bindgen::CargoCallbacks))
         .derive_debug(true)
         .impl_debug(true)
@@ -47,7 +45,7 @@ fn main() {
     cc::Build::new()
         .define("_UNICODE", Some("1"))
         .define("UNICODE", Some("1"))
-        .define(&target_arch_define, Some("1")) // win32 win64
+        .define(&target_arch_define, Some("1"))
         .file("ffi/yapi.cpp")
         .include("ffi/yapi")
         .compile("yapi");
