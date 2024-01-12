@@ -4,9 +4,11 @@ use serde::Deserialize;
 
 use std::{collections::HashMap, path::Path};
 
+// for Deserialize
 #[derive(Deserialize)]
 struct TGlobal {
     monitor_interval: Option<u64>,
+    native: Option<bool>,
 }
 
 #[derive(Deserialize)]
@@ -21,6 +23,10 @@ pub fn init_config(cfg: &mut Config, cfg_str: &str) -> Result<(), String> {
     if let Some(g) = tcfg.global {
         if let Some(i) = g.monitor_interval {
             cfg.set_monitor_interval(i);
+        }
+
+        if let Some(n) = g.native {
+            cfg.native = n
         }
     }
 
@@ -43,6 +49,7 @@ pub fn init_config(cfg: &mut Config, cfg_str: &str) -> Result<(), String> {
 
 pub struct Config {
     monitor_interval: u64,
+    native: bool,
     info: HashMap<String, String>,
 }
 
@@ -51,6 +58,7 @@ impl Config {
         Config {
             info: HashMap::new(),
             monitor_interval: 0,
+            native: false,
         }
     }
 
@@ -113,7 +121,7 @@ impl Config {
             }
         }
 
-        return Err(format!("dll file not exist {}", &dll_path));
+        Err(format!("dll file not exist {}", &dll_path))
     }
 
     pub fn get(&self, process_name: &String) -> String {
@@ -123,5 +131,9 @@ impl Config {
         } else {
             String::new()
         }
+    }
+
+    pub fn using_native(&self) -> bool {
+        self.native
     }
 }

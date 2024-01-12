@@ -86,7 +86,7 @@ impl Injector {
         }
     }
 
-    fn _inject(process: Process, dll_path: String) {
+    fn inject_by_native(process: Process, dll_path: String) {
         unsafe {
             // get kernel32 module
             let kernel_module = GetModuleHandleA(s!("kernel32.dll"));
@@ -268,7 +268,11 @@ impl Injector {
                         process.name,
                         process.pid
                     );
-                    Injector::inject_by_yapi(process, dll_path);
+                    if cfg.using_native() {
+                        Injector::inject_by_native(process, dll_path);
+                    } else {
+                        Injector::inject_by_yapi(process, dll_path);
+                    }
                 }
                 ProcessStatus::SubProcess(process) => {
                     if !cfg.get(&process.name).is_empty() {

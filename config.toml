@@ -1,6 +1,7 @@
 # interval 500ms
 [global]
 monitor_interval = 50
+native = false
 
 [injector]
 "x86.exe" = '.\dlls\x86.dll'

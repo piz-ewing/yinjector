@@ -23,6 +23,9 @@ $env:RUSTFLAGS="--remap-path-prefix $HOME=~"
 [global]
 monitor_interval = 50
 
+# when YAPI injection fails, try native
+native = false
+
 [injector]
 "a.exe" = 'a.dll'
 "b.exe" = '../b.dll'
@@ -41,7 +44,9 @@ monitor_interval = 50
 ![demo](./demo.png)
 
 ## todo
-✅ ~~merge x86 and x64 injector~~
+- ✅ ~~merge x86 and x64 injector~~
+
+- 📝 better way for merge x86 and x64 injector
 
 ## ref
 
