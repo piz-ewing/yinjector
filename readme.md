@@ -44,9 +44,11 @@ native = false
 ![demo](./demo.png)
 
 ## todo
-- ✅ ~~merge x86 and x64 injector~~
+- ✅ ~~Merge x86 and x64 injector~~
 
-- 📝 better way for merge x86 and x64 injector
+- 📝 Better way for merge x86 and x64 injector
+
+- ⌨️ [More ways to inject](https://github.com/HackerajOfficial/injectAllTheThings)
 
 ## ref
 
