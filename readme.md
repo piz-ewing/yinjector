@@ -26,7 +26,7 @@ monitor_interval = 50
 # when YAPI injection fails, try native
 native = false
 
-[injector]
+[process]
 "a.exe" = 'a.dll'
 "b.exe" = '../b.dll'
 "c.exe" = 'c:\c.dll'
@@ -34,6 +34,9 @@ native = false
 "x86.exe"='x86.dll'
 "x64.exe"='x64.dll'
 
+// inject when find title
+[window]
+"x86.exe" = "window_title"
 ```
 ## run
 
@@ -50,6 +53,8 @@ native = false
 
 - ⌨️ [More ways to inject](https://github.com/HackerajOfficial/injectAllTheThings)
 
+- ⌨️ organize 'window' injection code
+
 ## ref
 
 ***Maybe I'll modify it, so I don't import using subprojects***
@@ -59,3 +64,5 @@ native = false
 [pretty-env-logger](https://github.com/seanmonstar/pretty-env-logger.git) @seanmonstar
 
 [remove absolute paths in release binary](https://users.rust-lang.org/t/how-to-remove-absolute-paths-in-release-binary/75969)
+
+[windows-win-rs](https://github.com/DoumanAsh/windows-win-rs.git)

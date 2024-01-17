@@ -4,6 +4,9 @@ use util::*;
 mod config;
 use config::*;
 
+mod process;
+mod window;
+
 mod monitor;
 use monitor::*;
 
@@ -34,7 +37,7 @@ pub struct Injector {
 }
 
 impl Injector {
-    fn inject_by_yapi(process: Process, dll_path: String) {
+    fn inject_by_yapi(pid: u32, name: String, dll_path: String) {
         unsafe {
             // open remote process
             let h_proc = OpenProcess(
@@ -44,15 +47,11 @@ impl Injector {
                     | PROCESS_VM_WRITE
                     | PROCESS_VM_OPERATION,
                 FALSE,
-                process.pid,
+                pid,
             );
 
             if h_proc.is_err() {
-                error!(
-                    "[!] open {} failed, code {:?}",
-                    process.name,
-                    GetLastError()
-                );
+                error!("[!] open {} failed, code {:?}", name, GetLastError());
                 return;
             }
 
@@ -86,7 +85,7 @@ impl Injector {
         }
     }
 
-    fn inject_by_native(process: Process, dll_path: String) {
+    fn inject_by_native(pid: u32, name: String, dll_path: String) {
         unsafe {
             // get kernel32 module
             let kernel_module = GetModuleHandleA(s!("kernel32.dll"));
@@ -114,15 +113,11 @@ impl Injector {
                     | PROCESS_VM_WRITE
                     | PROCESS_VM_OPERATION,
                 FALSE,
-                process.pid,
+                pid,
             );
 
             if h_proc.is_err() {
-                error!(
-                    "[!] open {} failed, code {:?}",
-                    process.name,
-                    GetLastError()
-                );
+                error!("[!] open {} failed, code {:?}", name, GetLastError());
                 return;
             }
 
@@ -256,27 +251,64 @@ impl Injector {
         info!("[+] waiting for Ctrl-C...");
 
         Monitor::new()
-            .register(|cfg, status| match status {
-                ProcessStatus::AddProcess(process) => {
-                    let dll_path = cfg.get(&process.name);
-                    if dll_path.is_empty() {
+            .register(|cfg, status, has_injected| match status {
+                MonitorStatus::AddProcess(process) => {
+                    if has_injected.get(&process.pid).is_some() {
                         return;
                     }
-                    info!(
-                        "[+] inject {} --> {} [{}]",
-                        Path::new(&dll_path).file_name().unwrap().to_str().unwrap(),
-                        process.name,
-                        process.pid
-                    );
-                    if cfg.using_native() {
-                        Injector::inject_by_native(process, dll_path);
-                    } else {
-                        Injector::inject_by_yapi(process, dll_path);
+
+                    if cfg.query_window(&process.name).is_some() {
+                        return;
+                    }
+
+                    if let Some(dll_path) = cfg.query_process(&process.name) {
+                        info!(
+                            "[+] inject process {} --> {} [{}]",
+                            Path::new(&dll_path).file_name().unwrap().to_str().unwrap(),
+                            process.name,
+                            process.pid
+                        );
+
+                        has_injected.insert(process.pid);
+
+                        if cfg.using_native() {
+                            Injector::inject_by_native(process.pid, process.name, dll_path);
+                        } else {
+                            Injector::inject_by_yapi(process.pid, process.name, dll_path);
+                        }
                     }
                 }
-                ProcessStatus::SubProcess(process) => {
-                    if !cfg.get(&process.name).is_empty() {
+                MonitorStatus::SubProcess(process) => {
+                    if cfg.query_process(&process.name).is_some() {
                         info!("[-] process destory: {} [{}]", process.name, process.pid);
+                        has_injected.remove(&process.pid);
+                    }
+                }
+                MonitorStatus::SyncWindow(window) => {
+                    if has_injected.get(&window.pid).is_some() {
+                        return;
+                    }
+
+                    if !cfg.check_window(&window.name, &window.title) {
+                        return;
+                    }
+
+                    if let Some(dll_path) = cfg.query_process(&window.name) {
+                        info!(
+                            "[+] inject window[{}] {} --> {} [{}]",
+                            window.title,
+                            Path::new(&dll_path).file_name().unwrap().to_str().unwrap(),
+                            window.name,
+                            window.pid
+                        );
+
+                        has_injected.insert(window.pid);
+
+                        if cfg.using_native() {
+                            Injector::inject_by_native(window.pid, window.name, dll_path);
+                        } else {
+                            Injector::inject_by_yapi(window.pid, window.name, dll_path);
+                        }
                     }
                 }
             })

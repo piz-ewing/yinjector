@@ -14,7 +14,8 @@ struct TGlobal {
 #[derive(Deserialize)]
 struct TConfig {
     global: Option<TGlobal>,
-    injector: Option<HashMap<String, String>>,
+    process: Option<HashMap<String, String>>,
+    window: Option<HashMap<String, String>>,
 }
 
 pub fn init_config(cfg: &mut Config, cfg_str: &str) -> Result<(), String> {
@@ -34,13 +35,19 @@ pub fn init_config(cfg: &mut Config, cfg_str: &str) -> Result<(), String> {
         cfg.set_monitor_interval_default();
     }
 
-    if let Some(i) = tcfg.injector {
+    if let Some(i) = tcfg.process {
         for (n, d) in i {
             cfg.add(n, d)?;
         }
     }
 
-    if cfg.info.is_empty() {
+    if let Some(i) = tcfg.window {
+        for (n, d) in i {
+            cfg.window.insert(n, d);
+        }
+    }
+
+    if cfg.process.is_empty() {
         warn!("[!] inject none")
     }
 
@@ -50,13 +57,15 @@ pub fn init_config(cfg: &mut Config, cfg_str: &str) -> Result<(), String> {
 pub struct Config {
     monitor_interval: u64,
     native: bool,
-    info: HashMap<String, String>,
+    process: HashMap<String, String>,
+    window: HashMap<String, String>,
 }
 
 impl Config {
     pub fn new() -> Config {
         Config {
-            info: HashMap::new(),
+            process: HashMap::new(),
+            window: HashMap::new(),
             monitor_interval: 0,
             native: false,
         }
@@ -89,7 +98,7 @@ impl Config {
                 .unwrap()
                 .to_string();
             let abs_dll_path = adjust_canonicalization(abs_dll_path);
-            self.info
+            self.process
                 .entry(process_name.to_owned())
                 .or_insert(abs_dll_path.to_owned());
             info!("[+] {} -> {}", process_name, abs_dll_path);
@@ -113,7 +122,7 @@ impl Config {
 
                 let abs_dll_path = adjust_canonicalization(abs_dll_path);
 
-                self.info
+                self.process
                     .entry(process_name.to_owned())
                     .or_insert(abs_dll_path.to_owned());
                 info!("[+] {} --> {}", process_name, abs_dll_path);
@@ -123,13 +132,21 @@ impl Config {
 
         Err(format!("dll file not exist {}", &dll_path))
     }
+    pub fn query_process(&self, process_name: &String) -> Option<String> {
+        let process = self.process.get::<_>(process_name);
+        process.map(|process| process.to_owned())
+    }
 
-    pub fn get(&self, process_name: &String) -> String {
-        let info = self.info.get::<_>(process_name);
-        if let Some(info) = info {
-            info.to_owned()
+    pub fn query_window(&self, process_name: &String) -> Option<String> {
+        let window = self.window.get::<_>(process_name);
+        window.map(|window| window.to_owned())
+    }
+
+    pub fn check_window(&self, process_name: &String, title: &String) -> bool {
+        if let Some(t) = self.query_window(process_name) {
+            &t == title
         } else {
-            String::new()
+            false
         }
     }
 

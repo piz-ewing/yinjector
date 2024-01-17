@@ -3,6 +3,9 @@
 monitor_interval = 50
 native = false
 
-[injector]
+[process]
 "x86.exe" = '.\dlls\x86.dll'
 "x64.exe" = '.\dlls\x64.dll'
+
+[window]
+"x86.exe" = "x86"

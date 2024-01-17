@@ -12,13 +12,14 @@ toml = "0.8.0"
 log = "0.4.17"
 pretty_env_logger_custom = { path = "../pretty_env_logger_custom" }
 yapi-rs = { path = "../yapi-rs" }
+windows-win = { path = "../windows-win-rs" }
 
 scopeguard = "1.1.0"
 ctrlc = { version = "3.2.5", features = ["termination"] }
 
 
 [dependencies.windows]
-version = "0.51.1"
+version = "0.52.0"
 features = [
     "Win32_System_Diagnostics_ToolHelp",
     "Win32_Foundation",
