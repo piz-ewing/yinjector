@@ -1,3 +1,4 @@
+use log::*;
 use std::{
     collections::{hash_map::Entry, HashMap},
     rc::Rc,
@@ -6,8 +7,6 @@ use std::{
         Arc,
     },
 };
-
-use log::*;
 
 use super::window::*;
 use super::{process::*, Config};
@@ -111,7 +110,7 @@ impl Monitor {
                                     found_module = true;
                                     return false;
                                 }
-                                return true;
+                                true
                             });
 
                             if found_module {
@@ -150,7 +149,7 @@ impl Monitor {
                             for cb in self.callbacks.iter_mut() {
                                 cb.received_notification(MonitorEvent::NewWindow(WindowInfo {
                                     p: ProcessInfo {
-                                        pid: pid,
+                                        pid,
                                         name: v.1.clone(),
                                     },
                                     title: title.clone(),

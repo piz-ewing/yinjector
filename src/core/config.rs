@@ -101,7 +101,7 @@ impl Config {
                 .unwrap()
                 .parent()
                 .unwrap()
-                .join(&dll_path);
+                .join(dll_path);
             if abs_dll_path.is_file() {
                 let abs_dll_path = util::adjust_canonicalization(abs_dll_path);
 

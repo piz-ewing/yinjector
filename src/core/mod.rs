@@ -69,9 +69,8 @@ impl monitor::Reactor for Executor {
                 self.inject_to_process(p.pid, &p.name, "proc");
             }
             MonitorEvent::DelProcess(p) => {
-                if self.config.process.get(&p.name).is_some() {
+                if self.already_injected.remove(&p.pid) {
                     info!("[-] process destory: {} [{}]", p.name, p.pid);
-                    self.already_injected.remove(&p.pid);
                 }
             }
             MonitorEvent::NewWindow(w) => {
