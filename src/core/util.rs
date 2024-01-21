@@ -1,8 +1,5 @@
 use log::*;
-use scopeguard::guard;
 use std::{ffi::CString, path::Path};
-
-// win32
 use windows::{
     core::s,
     Win32::{
@@ -12,6 +9,7 @@ use windows::{
     },
 };
 
+// yapi
 use yapi_rs::yapi;
 
 pub trait OptionExt {
@@ -60,7 +58,7 @@ pub fn inject_by_yapi(pid: u32, name: &str, dll_path: &str) {
         }
 
         let h_proc = h_proc.unwrap();
-        let _h_proc = guard(h_proc, |h_proc| {
+        let _h_proc = scopeguard::guard(h_proc, |h_proc| {
             trace!("close handle");
             let _ = CloseHandle(h_proc);
         });
@@ -124,7 +122,7 @@ pub fn inject_by_native(pid: u32, name: &str, dll_path: &str) {
         }
 
         let h_proc = h_proc.unwrap();
-        let _h_proc = guard(h_proc, |h_proc| {
+        let _h_proc = scopeguard::guard(h_proc, |h_proc| {
             trace!("close handle");
             let _ = CloseHandle(h_proc);
         });
@@ -142,7 +140,7 @@ pub fn inject_by_native(pid: u32, name: &str, dll_path: &str) {
             MEM_RESERVE | MEM_COMMIT,
             PAGE_READWRITE,
         );
-        let _v_mem = guard(v_mem, |v_mem| {
+        let _v_mem = scopeguard::guard(v_mem, |v_mem| {
             trace!("free mem");
             let _ = VirtualFreeEx(h_proc, v_mem, 0, MEM_RELEASE);
         });
@@ -180,7 +178,7 @@ pub fn inject_by_native(pid: u32, name: &str, dll_path: &str) {
         }
 
         let h_remote_thd = h_remote_thd.unwrap();
-        let _h_remote_thd = guard(h_remote_thd, |h_remote_thd| {
+        let _h_remote_thd = scopeguard::guard(h_remote_thd, |h_remote_thd| {
             trace!("close thd");
             let _ = CloseHandle(h_remote_thd);
         });

@@ -6,12 +6,14 @@ native = false
 "x86.exe" = '.\dlls\x86\msg.dll'
 "x64.exe" = '.\dlls\x64\msg.dll'
 
+# execute when module exists
 [module]
 "x86.exe" = "user32.dll"
 
+# execute when window title exists
 [window]
 "x86.exe" = "window title"
 
-# TODO
+# TODO deferred x seconds execution
 [delay]
 "x86.exe" = 1

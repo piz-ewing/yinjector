@@ -1,7 +1,4 @@
-use windows::Win32::Foundation::{BOOL, HWND, LPARAM, TRUE};
-use windows::Win32::UI::WindowsAndMessaging::{
-    EnumWindows, GetWindowTextW, GetWindowThreadProcessId,
-};
+use windows::Win32::{Foundation::*, UI::WindowsAndMessaging::*};
 
 unsafe extern "system" fn callback_enum_windows<T: FnMut(u32, String)>(
     window: HWND,

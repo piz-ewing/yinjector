@@ -7,16 +7,15 @@ edition = "2021"
 build = "build.rs"
 
 [dependencies]
-serde = { version = "1", features = ["derive"] }
-toml = "0"
-log = "0"
-pretty_env_logger = "0"
 yapi-rs = { path = "yapi-rs" }
-# windows-win = { path = "../windows-win-rs" }
 
-scopeguard = "1"
 anyhow = "1"
 ctrlc = { version = "3", features = ["termination"] }
+log = "0"
+pretty_env_logger = "0"
+scopeguard = "1"
+serde = { version = "1", features = ["derive"] }
+toml = "0"
 
 
 [dependencies.windows]
@@ -34,6 +33,7 @@ features = [
     "Win32_UI_WindowsAndMessaging",
     "Win32_System_ProcessStatus",
 ]
+
 
 [build-dependencies]
 # must use msvc-compiler

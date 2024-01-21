@@ -1,6 +1,5 @@
-use std::sync::mpsc::channel;
-
 use log::*;
+use std::sync::mpsc::channel;
 
 mod core;
 use crate::core::Injector;
