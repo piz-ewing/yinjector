@@ -1,11 +1,17 @@
-# interval 500ms
 [global]
 monitor_interval = 50
 native = false
 
-[process]
-"x86.exe" = '.\dlls\x86.dll'
-"x64.exe" = '.\dlls\x64.dll'
+[base]
+"x86.exe" = '.\dlls\x86\msg.dll'
+"x64.exe" = '.\dlls\x64\msg.dll'
+
+[module]
+"x86.exe" = "user32.dll"
 
 [window]
-"x86.exe" = "x86"
+"x86.exe" = "window title"
+
+# TODO
+[delay]
+"x86.exe" = 1

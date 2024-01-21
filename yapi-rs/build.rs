@@ -34,7 +34,7 @@ fn main() {
         .clang_arg("-D__UNICODE=1")
         .clang_arg("-D_UNICODE=1")
         .clang_arg(std::format!("-D_{}=1", &target_arch_define))
-        .parse_callbacks(Box::new(bindgen::CargoCallbacks))
+        .parse_callbacks(Box::new(bindgen::CargoCallbacks::new()))
         .derive_debug(true)
         .impl_debug(true)
         .generate()

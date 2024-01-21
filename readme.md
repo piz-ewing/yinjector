@@ -22,21 +22,28 @@ $env:RUSTFLAGS="--remap-path-prefix $HOME=~"
 ```toml
 [global]
 monitor_interval = 50
-
-# when YAPI injection fails, try native
 native = false
 
-[process]
+[base]
 "a.exe" = 'a.dll'
 "b.exe" = '../b.dll'
 "c.exe" = 'c:\c.dll'
 
-"x86.exe"='x86.dll'
-"x64.exe"='x64.dll'
+"x86.exe" = '.\dlls\x86\msg.dll'
+"x64.exe" = '.\dlls\x64\msg.dll'
 
-// inject when find title
+# execute when module exists
+[module]
+"x86.exe" = "user32.dll"
+
+# execute when window title exists
 [window]
-"x86.exe" = "window_title"
+"x86.exe" = "window title"
+
+# TODO deferred x seconds execution
+[delay]
+"x86.exe" = 1
+
 ```
 ## run
 
@@ -53,11 +60,15 @@ native = false
 
 - ⌨️ [More ways to inject](https://github.com/HackerajOfficial/injectAllTheThings)
 
-- ⌨️ organize 'window' injection code
+- ~~⌨️ organize 'window' injection code~~
+
+- ~~⌨️ organize 'module' injection code~~
+-
+- ⌨️ organize 'delay' injection code~~
 
 ## ref
 
-***Maybe I'll modify it, so I don't import using subprojects***
+***thx***
 
 [YAPI -- Yet Another Process Injector](https://github.com/ez8-co/yapi.git) @ez8-co
 
