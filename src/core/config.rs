@@ -25,7 +25,7 @@ struct TConfig {
 pub struct Config {
     pub monitor_interval: u64,
     pub native: bool,
-    pub process: HashMap<String, String>,
+    pub base: HashMap<String, String>,
     pub window: HashMap<String, String>,
     pub module: HashMap<String, String>,
 }
@@ -40,7 +40,7 @@ impl Config {
         let mut config = Self {
             monitor_interval: Self::DEFAULT_MONITOR_INTERVAL,
             native: Self::DEFAULT_NATIVE,
-            process: HashMap::new(),
+            base: HashMap::new(),
             window: HashMap::new(),
             module: HashMap::new(),
         };
@@ -75,7 +75,7 @@ impl Config {
             }
         }
 
-        if config.process.is_empty() {
+        if config.base.is_empty() {
             warn!("[!] inject empty")
         }
 
@@ -88,7 +88,7 @@ impl Config {
         if abs_dll_path.is_file() {
             let abs_dll_path = util::adjust_canonicalization(abs_dll_path);
 
-            self.process
+            self.base
                 .insert(process_name.to_owned(), abs_dll_path.to_owned());
 
             info!("[+] {} -> {}", process_name, abs_dll_path);
@@ -105,7 +105,7 @@ impl Config {
             if abs_dll_path.is_file() {
                 let abs_dll_path = util::adjust_canonicalization(abs_dll_path);
 
-                self.process
+                self.base
                     .insert(process_name.to_owned(), abs_dll_path.to_owned());
 
                 info!("[+] {} --> {}", process_name, abs_dll_path);

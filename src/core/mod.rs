@@ -30,7 +30,7 @@ impl Executor {
     }
 
     fn inject_to_process(&mut self, pid: u32, name: &str, tag: &str) {
-        if let Some(dll_path) = self.config.process.get(name) {
+        if let Some(dll_path) = self.config.base.get(name) {
             info!(
                 "[+] inject process:[{}] {} --> {} [{}]",
                 tag,
