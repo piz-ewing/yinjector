@@ -3,12 +3,10 @@ use windows::Win32::{Foundation::*, System::Diagnostics::ToolHelp::*};
 
 pub fn enum_process<T: FnMut(u32, String)>(mut f: T) {
     unsafe {
-        let h_snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
-        if h_snapshot.is_err() {
+        let Ok(h_snapshot) = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) else {
             return;
-        }
+        };
 
-        let h_snapshot = h_snapshot.unwrap();
         let _h_snapshot = scopeguard::guard(h_snapshot, |h_snapshot| {
             trace!("close handle");
             let _ = CloseHandle(h_snapshot);
@@ -43,12 +41,11 @@ pub fn enum_process<T: FnMut(u32, String)>(mut f: T) {
 
 pub fn enum_module<T: FnMut(String) -> bool>(pid: u32, mut f: T) {
     unsafe {
-        let h_snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32, pid);
-        if h_snapshot.is_err() {
+        let Ok(h_snapshot) = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE | TH32CS_SNAPMODULE32, pid)
+        else {
             return;
-        }
+        };
 
-        let h_snapshot = h_snapshot.unwrap();
         let _h_snapshot = scopeguard::guard(h_snapshot, |h_snapshot| {
             trace!("close handle");
             let _ = CloseHandle(h_snapshot);

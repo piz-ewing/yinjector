@@ -32,17 +32,13 @@ pub fn adjust_canonicalization<P: AsRef<Path>>(p: P) -> String {
     const VERBATIM_PREFIX: &str = r#"\\?\"#;
 
     let p = p.as_ref().canonicalize().unwrap().display().to_string();
-    if let Some(e) = p.strip_prefix(VERBATIM_PREFIX) {
-        e.to_string()
-    } else {
-        p
-    }
+    p.strip_prefix(VERBATIM_PREFIX).unwrap_or(&p).to_string()
 }
 
 pub fn inject_by_yapi(pid: u32, name: &str, dll_path: &str) {
     unsafe {
         // open remote process
-        let h_proc = OpenProcess(
+        let Ok(h_proc) = OpenProcess(
             PROCESS_CREATE_THREAD
                 | PROCESS_QUERY_INFORMATION
                 | PROCESS_VM_READ
@@ -50,14 +46,11 @@ pub fn inject_by_yapi(pid: u32, name: &str, dll_path: &str) {
                 | PROCESS_VM_OPERATION,
             FALSE,
             pid,
-        );
-
-        if h_proc.is_err() {
+        ) else {
             error!("[!] open {} failed, code {:?}", name, GetLastError());
             return;
-        }
+        };
 
-        let h_proc = h_proc.unwrap();
         let _h_proc = scopeguard::guard(h_proc, |h_proc| {
             trace!("close handle");
             let _ = CloseHandle(h_proc);
@@ -90,24 +83,22 @@ pub fn inject_by_yapi(pid: u32, name: &str, dll_path: &str) {
 pub fn inject_by_native(pid: u32, name: &str, dll_path: &str) {
     unsafe {
         // get kernel32 module
-        let kernel_module = GetModuleHandleA(s!("kernel32.dll"));
-        if kernel_module.is_err() {
+        let Ok(kernel_module) = GetModuleHandleA(s!("kernel32.dll")) else {
             error!("[!] get kernel32 module failed, code {:?}", GetLastError());
             return;
-        }
+        };
 
         // get LoadLibraryA address
-        let load_lib = GetProcAddress(kernel_module.unwrap(), s!("LoadLibraryA"));
-        if load_lib.is_none() {
+        let Some(load_lib) = GetProcAddress(kernel_module, s!("LoadLibraryA")) else {
             error!(
                 "[!] get func LoadLibraryA failed, code {:?}",
                 GetLastError()
             );
             return;
-        }
+        };
 
         // open remote process
-        let h_proc = OpenProcess(
+        let Ok(h_proc) = OpenProcess(
             PROCESS_CREATE_THREAD
                 | PROCESS_QUERY_INFORMATION
                 | PROCESS_VM_READ
@@ -115,13 +106,11 @@ pub fn inject_by_native(pid: u32, name: &str, dll_path: &str) {
                 | PROCESS_VM_OPERATION,
             FALSE,
             pid,
-        );
-        if h_proc.is_err() {
+        ) else {
             error!("[!] open {} failed, code {:?}", name, GetLastError());
             return;
-        }
+        };
 
-        let h_proc = h_proc.unwrap();
         let _h_proc = scopeguard::guard(h_proc, |h_proc| {
             trace!("close handle");
             let _ = CloseHandle(h_proc);
@@ -163,21 +152,19 @@ pub fn inject_by_native(pid: u32, name: &str, dll_path: &str) {
         }
 
         // create remote thread
-        let h_remote_thd = CreateRemoteThread(
+        let Ok(h_remote_thd) = CreateRemoteThread(
             h_proc,
             Some(std::ptr::null::<SECURITY_ATTRIBUTES>()),
             0_usize,
-            Some(std::mem::transmute(load_lib.unwrap())),
+            Some(std::mem::transmute(load_lib)),
             Some(v_mem),
             0_u32,
             Some(std::ptr::null_mut::<u32>()),
-        );
-        if h_remote_thd.is_err() {
+        ) else {
             error!("[!] create remote thread failed, code {:?}", GetLastError());
             return;
-        }
+        };
 
-        let h_remote_thd = h_remote_thd.unwrap();
         let _h_remote_thd = scopeguard::guard(h_remote_thd, |h_remote_thd| {
             trace!("close thd");
             let _ = CloseHandle(h_remote_thd);

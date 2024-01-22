@@ -157,8 +157,6 @@ impl Injector {
             }
 
             self.config_path = Some(util::adjust_canonicalization(config_path));
-
-            return Ok(());
         } else {
             self.config_path = Some(Self::defalut_config_path()?);
         }
