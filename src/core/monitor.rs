@@ -35,7 +35,7 @@ pub enum MonitorEvent {
 }
 
 pub trait Reactor {
-    fn received_notification(&mut self, _: MonitorEvent);
+    fn received_notification(&mut self, _: MonitorEvent) -> bool;
 }
 
 pub struct Monitor {
@@ -82,10 +82,12 @@ impl Monitor {
                     })
                     .or_insert_with(|| {
                         for cb in self.callbacks.iter_mut() {
-                            cb.received_notification(MonitorEvent::AddProcess(ProcessInfo {
+                            if !cb.received_notification(MonitorEvent::AddProcess(ProcessInfo {
                                 pid,
                                 name: name.to_owned(),
-                            }));
+                            })) {
+                                running.store(false, Ordering::SeqCst);
+                            }
                         }
                         (monitor_count, name.clone())
                     });
@@ -100,12 +102,14 @@ impl Monitor {
                             enum_module(pid, |module_name| -> bool {
                                 if module.to_lowercase() == module_name.to_lowercase() {
                                     for cb in self.callbacks.iter_mut() {
-                                        cb.received_notification(MonitorEvent::IncludeModule(
+                                        if !cb.received_notification(MonitorEvent::IncludeModule(
                                             ProcessInfo {
                                                 pid,
                                                 name: name.to_owned(),
                                             },
-                                        ));
+                                        )) {
+                                            running.store(false, Ordering::SeqCst);
+                                        }
                                     }
                                     found_module = true;
                                     return false;
@@ -128,10 +132,12 @@ impl Monitor {
             process_statistics.retain(|k, v| {
                 if v.0 != monitor_count {
                     for cb in self.callbacks.iter_mut() {
-                        cb.received_notification(MonitorEvent::DelProcess(ProcessInfo {
+                        if !cb.received_notification(MonitorEvent::DelProcess(ProcessInfo {
                             pid: *k,
                             name: v.1.to_owned(),
-                        }));
+                        })) {
+                            running.store(false, Ordering::SeqCst);
+                        }
                     }
                     return false;
                 }
@@ -147,13 +153,15 @@ impl Monitor {
                     .or_insert_with(|| {
                         if let Some(v) = process_statistics.get(&pid) {
                             for cb in self.callbacks.iter_mut() {
-                                cb.received_notification(MonitorEvent::NewWindow(WindowInfo {
+                                if !cb.received_notification(MonitorEvent::NewWindow(WindowInfo {
                                     p: ProcessInfo {
                                         pid,
                                         name: v.1.clone(),
                                     },
                                     title: title.clone(),
-                                }));
+                                })) {
+                                    running.store(false, Ordering::SeqCst);
+                                }
                             }
                         }
                         monitor_count

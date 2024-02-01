@@ -16,7 +16,7 @@ pretty_env_logger = "0"
 scopeguard = "1"
 serde = { version = "1", features = ["derive"] }
 toml = "0"
-
+local-encoding-ng = "*"
 
 [dependencies.windows]
 version = "0"

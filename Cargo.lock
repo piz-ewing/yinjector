@@ -182,6 +182,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "ctrlc",
+ "local-encoding-ng",
  "log",
  "pretty_env_logger",
  "scopeguard",
@@ -245,6 +246,15 @@ name = "linux-raw-sys"
 version = "0.4.13"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "01cda141df6706de531b6c46c3a33ecca755538219bd484262fa09410c13539c"
+
+[[package]]
+name = "local-encoding-ng"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c3ad0f282498523d84ce1acb03a199a4a11cb2c7e282d47ff8870fb2882aedcc"
+dependencies = [
+ "winapi",
+]
 
 [[package]]
 name = "log"

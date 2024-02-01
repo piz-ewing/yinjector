@@ -12,6 +12,7 @@ pub const DEFAULT_CONFIG_FILE_NAME: &str = "config.toml";
 struct TGlobal {
     monitor_interval: Option<u64>,
     native: Option<bool>,
+    exit_on_injected: Option<bool>,
 }
 
 #[derive(Deserialize)]
@@ -25,6 +26,7 @@ struct TConfig {
 pub struct Config {
     pub monitor_interval: u64,
     pub native: bool,
+    pub exit_on_injected: bool,
     pub base: HashMap<String, String>,
     pub window: HashMap<String, String>,
     pub module: HashMap<String, String>,
@@ -33,6 +35,7 @@ pub struct Config {
 impl Config {
     const DEFAULT_MONITOR_INTERVAL: u64 = 500;
     const DEFAULT_NATIVE: bool = false;
+    const DEFAULT_EXIT_ON_INJECTED: bool = false;
 
     pub fn parser(content: &str) -> anyhow::Result<Config> {
         let raw_config: TConfig = toml::from_str(content).context("")?;
@@ -40,6 +43,7 @@ impl Config {
         let mut config = Self {
             monitor_interval: Self::DEFAULT_MONITOR_INTERVAL,
             native: Self::DEFAULT_NATIVE,
+            exit_on_injected: Self::DEFAULT_EXIT_ON_INJECTED,
             base: HashMap::new(),
             window: HashMap::new(),
             module: HashMap::new(),
@@ -53,6 +57,13 @@ impl Config {
             if let Some(v) = global.native {
                 config.native = v;
             }
+
+            if let Some(v) = global.exit_on_injected {
+                config.exit_on_injected = v;
+            }
+            info!("[+] monitor_interval {}ms", config.monitor_interval);
+            info!("[+] native {}", config.native);
+            info!("[+] exit_on_injected {}", config.exit_on_injected);
         }
 
         if let Some(ps) = raw_config.base {

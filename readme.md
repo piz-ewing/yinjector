@@ -23,6 +23,7 @@ $env:RUSTFLAGS="--remap-path-prefix $HOME=~"
 [global]
 monitor_interval = 50
 native = false
+exit_on_injected = false
 
 [base]
 "a.exe" = 'a.dll'
@@ -65,6 +66,8 @@ native = false
 - ~~⌨️ organize 'module' injection code~~
 
 - ⌨️ organize 'delay' injection code~~
+
+- ❌ [bug] setting multiple targets
 
 ## ref
 

@@ -1,5 +1,8 @@
 use log::*;
-use std::{ffi::CString, path::Path};
+use std::path::Path;
+
+use local_encoding_ng::{Encoder, Encoding};
+
 use windows::{
     core::s,
     Win32::{
@@ -8,7 +11,6 @@ use windows::{
         System::{Diagnostics::Debug::*, LibraryLoader::*, Memory::*, Threading::*},
     },
 };
-
 // yapi
 use yapi_rs::yapi;
 
@@ -62,10 +64,12 @@ pub fn inject_by_yapi(pid: u32, name: &str, dll_path: &str) {
             return;
         }
 
-        let dll_path = CString::new(dll_path).unwrap();
+        let mut dll_path_acp = Encoding::ANSI.to_bytes(dll_path).unwrap();
+        dll_path_acp.push(0);
+
         if yapi::yinject(
             h_proc.0 as *mut ::core::ffi::c_void,
-            dll_path.as_ptr() as *const ::core::ffi::c_char,
+            dll_path_acp.as_ptr() as *const ::core::ffi::c_char,
             is_wow64.0,
         ) == 0
         {
@@ -116,8 +120,8 @@ pub fn inject_by_native(pid: u32, name: &str, dll_path: &str) {
             let _ = CloseHandle(h_proc);
         });
 
-        let dll_path = CString::new(dll_path).unwrap();
-        let path_len = dll_path.to_bytes_with_nul().len();
+        let mut dll_path_acp = Encoding::ANSI.to_bytes(dll_path).unwrap();
+        dll_path_acp.push(0);
 
         trace!("path --> {:?}", &dll_path);
 
@@ -125,7 +129,7 @@ pub fn inject_by_native(pid: u32, name: &str, dll_path: &str) {
         let v_mem = VirtualAllocEx(
             h_proc,
             Some(std::ptr::null()),
-            path_len,
+            dll_path_acp.len(),
             MEM_RESERVE | MEM_COMMIT,
             PAGE_READWRITE,
         );
@@ -138,8 +142,8 @@ pub fn inject_by_native(pid: u32, name: &str, dll_path: &str) {
         if WriteProcessMemory(
             h_proc,
             v_mem,
-            dll_path.as_ptr() as *const ::core::ffi::c_void,
-            path_len,
+            dll_path_acp.as_ptr() as _,
+            dll_path_acp.len(),
             Some(std::ptr::null_mut::<usize>()),
         )
         .is_err()

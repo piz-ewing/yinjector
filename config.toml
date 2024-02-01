@@ -1,6 +1,7 @@
 [global]
 monitor_interval = 50
 native = false
+exit_on_injected = false
 
 [base]
 "x86.exe" = '.\dlls\x86\msg.dll'

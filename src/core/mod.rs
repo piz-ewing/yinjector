@@ -29,7 +29,7 @@ impl Executor {
         }
     }
 
-    fn inject_to_process(&mut self, pid: u32, name: &str, tag: &str) {
+    fn inject_to_process(&mut self, pid: u32, name: &str, tag: &str) -> bool {
         if let Some(dll_path) = self.config.base.get(name) {
             info!(
                 "[+] inject process:[{}] {} --> {} [{}]",
@@ -46,52 +46,56 @@ impl Executor {
             }
 
             self.already_injected.insert(pid);
+
+            return !self.config.exit_on_injected;
         }
+        true
     }
 }
 
 impl monitor::Reactor for Executor {
-    fn received_notification(&mut self, e: MonitorEvent) {
+    fn received_notification(&mut self, e: MonitorEvent) -> bool {
         match e {
             MonitorEvent::AddProcess(p) => {
                 if self.already_injected.get(&p.pid).is_some() {
-                    return;
+                    return true;
                 }
 
                 if self.config.module.get(&p.name).is_some() {
-                    return;
+                    return true;
                 }
 
                 if self.config.window.get(&p.name).is_some() {
-                    return;
+                    return true;
                 }
 
-                self.inject_to_process(p.pid, &p.name, "proc");
+                self.inject_to_process(p.pid, &p.name, "proc")
             }
             MonitorEvent::DelProcess(p) => {
                 if self.already_injected.remove(&p.pid) {
                     info!("[-] process destory: {} [{}]", p.name, p.pid);
                 }
+                true
             }
             MonitorEvent::NewWindow(w) => {
                 let p = &w.p;
                 if self.already_injected.get(&p.pid).is_some() {
-                    return;
+                    return true;
                 }
 
                 let title = self.config.window.get(&p.name);
                 if title.is_none() || title.unwrap() == &w.title {
-                    return;
+                    return true;
                 }
 
-                self.inject_to_process(p.pid, &p.name, "win");
+                self.inject_to_process(p.pid, &p.name, "win")
             }
             MonitorEvent::IncludeModule(p) => {
                 if self.already_injected.get(&p.pid).is_some() {
-                    return;
+                    return true;
                 }
 
-                self.inject_to_process(p.pid, &p.name, "mod");
+                self.inject_to_process(p.pid, &p.name, "mod")
             }
         }
     }
