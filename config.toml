@@ -1,9 +1,18 @@
 [global]
+# monitor interval 50ms
 monitor_interval = 50
+
+# use native method to inject
 native = false
+
+# exit after injection
 exit_on_injected = false
 
 [base]
+"a.exe" = 'a.dll'
+"b.exe" = '../b.dll'
+"c.exe" = 'c:\c.dll'
+
 "x86.exe" = '.\dlls\x86\msg.dll'
 "x64.exe" = '.\dlls\x64\msg.dll'
 
@@ -15,6 +24,6 @@ exit_on_injected = false
 [window]
 "x86.exe" = "window title"
 
-# TODO deferred x seconds execution
+# deferred x seconds execution, 5000 ms
 [delay]
-"x86.exe" = 1
+"x86.exe" = 5000

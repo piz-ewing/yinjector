@@ -69,6 +69,10 @@ impl monitor::Reactor for Executor {
                     return true;
                 }
 
+                if self.config.delay.get(&p.name).is_some() {
+                    return true;
+                }
+
                 self.inject_to_process(p.pid, &p.name, "proc")
             }
             MonitorEvent::DelProcess(p) => {
@@ -96,6 +100,13 @@ impl monitor::Reactor for Executor {
                 }
 
                 self.inject_to_process(p.pid, &p.name, "mod")
+            }
+            MonitorEvent::DelayProcess(p) => {
+                if self.already_injected.get(&p.pid).is_some() {
+                    return true;
+                }
+
+                self.inject_to_process(p.pid, &p.name, "delay")
             }
         }
     }

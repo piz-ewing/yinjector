@@ -32,6 +32,7 @@ pub enum MonitorEvent {
 
     NewWindow(WindowInfo),
     IncludeModule(ProcessInfo),
+    DelayProcess(ProcessInfo),
 }
 
 pub trait Reactor {
@@ -68,6 +69,7 @@ impl Monitor {
         let mut process_statistics = HashMap::new();
         let mut window_statistics = HashMap::new();
         let mut module_statistics = HashMap::new();
+        let mut delay_statistics = HashMap::new();
 
         let mut monitor_count = 0;
         loop {
@@ -92,7 +94,30 @@ impl Monitor {
                         (monitor_count, name.clone())
                     });
 
-                if let Some(module) = self.config.module.get(&name) {
+                if let Some(delay) = self.config.delay.get(&name) {
+                    match delay_statistics.entry(pid) {
+                        Entry::Occupied(mut o) => {
+                            let (_, d) = *o.get();
+                            if d <= self.config.monitor_interval {
+                                for cb in self.callbacks.iter_mut() {
+                                    if !cb.received_notification(MonitorEvent::DelayProcess(
+                                        ProcessInfo {
+                                            pid,
+                                            name: name.to_owned(),
+                                        },
+                                    )) {
+                                        running.store(false, Ordering::SeqCst);
+                                    }
+                                }
+                            } else {
+                                *o.get_mut() = (monitor_count, d - self.config.monitor_interval);
+                            }
+                        }
+                        Entry::Vacant(v) => {
+                            v.insert((monitor_count, delay.to_owned()));
+                        }
+                    }
+                } else if let Some(module) = self.config.module.get(&name) {
                     match module_statistics.entry(pid.to_string() + name.as_str()) {
                         Entry::Occupied(mut o) => {
                             *o.get_mut() = monitor_count;
@@ -128,6 +153,9 @@ impl Monitor {
             // remove invalid module
             module_statistics.retain(|_, v| *v == monitor_count);
 
+            // remove invalid delay
+            delay_statistics.retain(|_, v| v.0 == monitor_count);
+
             // remove invalid process
             process_statistics.retain(|k, v| {
                 if v.0 != monitor_count {
@@ -152,15 +180,19 @@ impl Monitor {
                     })
                     .or_insert_with(|| {
                         if let Some(v) = process_statistics.get(&pid) {
-                            for cb in self.callbacks.iter_mut() {
-                                if !cb.received_notification(MonitorEvent::NewWindow(WindowInfo {
-                                    p: ProcessInfo {
-                                        pid,
-                                        name: v.1.clone(),
-                                    },
-                                    title: title.clone(),
-                                })) {
-                                    running.store(false, Ordering::SeqCst);
+                            if self.config.delay.get(&v.1).is_none() {
+                                for cb in self.callbacks.iter_mut() {
+                                    if !cb.received_notification(MonitorEvent::NewWindow(
+                                        WindowInfo {
+                                            p: ProcessInfo {
+                                                pid,
+                                                name: v.1.clone(),
+                                            },
+                                            title: title.clone(),
+                                        },
+                                    )) {
+                                        running.store(false, Ordering::SeqCst);
+                                    }
                                 }
                             }
                         }

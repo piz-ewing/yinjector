@@ -21,8 +21,13 @@ $env:RUSTFLAGS="--remap-path-prefix $HOME=~"
 ## config
 ```toml
 [global]
+# monitor interval 50ms
 monitor_interval = 50
+
+# use native method to inject
 native = false
+
+# exit after injection
 exit_on_injected = false
 
 [base]
@@ -41,9 +46,9 @@ exit_on_injected = false
 [window]
 "x86.exe" = "window title"
 
-# TODO deferred x seconds execution
+# deferred x seconds execution, 5000 ms
 [delay]
-"x86.exe" = 1
+"x86.exe" = 5000
 
 ```
 ## run
@@ -65,9 +70,11 @@ exit_on_injected = false
 
 - ~~⌨️ organize 'module' injection code~~
 
-- ⌨️ organize 'delay' injection code~~
+- ~~⌨️ organize 'delay' injection code~~
 
 - ❌ [bug] setting multiple targets
+
+- need to fix priority between modes
 
 ## ref
 

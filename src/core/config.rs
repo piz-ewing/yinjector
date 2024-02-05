@@ -21,6 +21,7 @@ struct TConfig {
     base: Option<HashMap<String, String>>,
     window: Option<HashMap<String, String>>,
     module: Option<HashMap<String, String>>,
+    delay: Option<HashMap<String, u64>>,
 }
 
 pub struct Config {
@@ -30,6 +31,7 @@ pub struct Config {
     pub base: HashMap<String, String>,
     pub window: HashMap<String, String>,
     pub module: HashMap<String, String>,
+    pub delay: HashMap<String, u64>,
 }
 
 impl Config {
@@ -47,6 +49,7 @@ impl Config {
             base: HashMap::new(),
             window: HashMap::new(),
             module: HashMap::new(),
+            delay: HashMap::new(),
         };
 
         if let Some(global) = raw_config.global {
@@ -83,6 +86,12 @@ impl Config {
         if let Some(ms) = raw_config.module {
             for (process_name, module_name) in ms {
                 config.module.insert(process_name, module_name);
+            }
+        }
+
+        if let Some(ds) = raw_config.delay {
+            for (process_name, delay) in ds {
+                config.delay.insert(process_name, delay);
             }
         }
 
