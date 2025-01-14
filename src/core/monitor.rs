@@ -1,215 +1,177 @@
-use log::*;
-use std::{
-    collections::{hash_map::Entry, HashMap},
-    rc::Rc,
-    sync::{
-        atomic::{AtomicBool, Ordering},
-        Arc,
-    },
-};
+use log::info;
+use std::cell::RefCell;
+use std::path::Path;
+use std::sync::Arc;
+use std::sync::Mutex;
 
-use super::window::*;
-use super::{process::*, Config};
+use ferrisetw::parser::Parser;
+use ferrisetw::provider::Provider;
+use ferrisetw::schema_locator::SchemaLocator;
+use ferrisetw::trace::UserTrace;
+use ferrisetw::trace::*;
+use ferrisetw::EventRecord;
 
-pub struct ProcessInfo {
-    pub pid: u32,
-    pub name: String,
+use super::util;
+
+#[derive(Clone)]
+pub enum Event {
+    ProcessStart(u32, String),
+    ProcessStop(u32, String),
+
+    ImageLoad(u32, String),
+    // ImageUnload(u32),
+    GUIProcessStart(u32),
+    // GUIProcessStop(u32),
 }
 
-pub struct WindowInfo {
-    pub p: ProcessInfo,
-    pub title: String,
+pub trait Listener {
+    fn trigger(&mut self, _: Event);
 }
 
-// pub struct ModulesInfo {
-//     pub p: ProcessInfo,
-//     pub modules: HashSet<String>,
-// }
+type AListeners = Arc<Mutex<Vec<Box<dyn Listener + 'static + Send + Sync>>>>;
 
-pub enum MonitorEvent {
-    AddProcess(ProcessInfo),
-    DelProcess(ProcessInfo),
-
-    NewWindow(WindowInfo),
-    IncludeModule(ProcessInfo),
-    DelayProcess(ProcessInfo),
-}
-
-pub trait Reactor {
-    fn received_notification(&mut self, _: MonitorEvent) -> bool;
-}
-
+#[derive(Default)]
 pub struct Monitor {
-    callbacks: Vec<Box<dyn Reactor>>,
-    config: Rc<Config>,
+    listeners: AListeners, // Arc Mutext Option/Vec
+    user_trace: RefCell<Option<UserTrace>>,
 }
 
 impl Monitor {
-    pub fn build(config: Rc<Config>) -> Self {
-        Self {
-            callbacks: Vec::new(),
-            config,
-        }
+    pub fn new() -> Self {
+        Self::default()
     }
 
-    pub fn register(&mut self, r: Box<dyn Reactor>) -> &mut Self {
-        self.callbacks.push(r);
-        self
+    pub fn subscribe(&self, r: Box<dyn Listener + 'static + Send + Sync>) {
+        self.listeners.lock().unwrap().push(r)
     }
 
-    pub fn run(&mut self) {
-        let running = Arc::new(AtomicBool::new(true));
-        let r: Arc<AtomicBool> = running.clone();
+    pub fn start(&self) {
+        let listeners_clone = self.listeners.clone();
+        let process_provider = Provider::by_guid("22fb2cd6-0e7b-422b-a0c7-2fad1fd0e716") // Microsoft-Windows-Kernel-Process
+            .add_callback(move |record, schema_locator| {
+                process_callback(record, schema_locator, &listeners_clone)
+            })
+            .build();
 
-        ctrlc::set_handler(move || r.store(false, Ordering::SeqCst))
-            .expect("[!] setting Ctrl-C handler error");
+        let listeners_clone = self.listeners.clone();
+        let win32k_provider = Provider::by_guid("8c416c79-d49b-4f01-a467-e56d3aa8234c") // Microsoft-Windows-Win32k
+            .add_callback(move |record, schema_locator| {
+                win32k_callback(record, schema_locator, &listeners_clone)
+            })
+            .build();
 
-        info!("[+] waiting for Ctrl-C...");
+        // FIXME: Replay fake event, Events before etw takes effect may be lost.
+        let listeners_clone = self.listeners.clone();
+        util::enum_process(|process_id, file_name| {
+            notify(
+                &listeners_clone,
+                Event::ProcessStart(process_id, file_name.to_lowercase()),
+            );
 
-        let mut process_statistics = HashMap::new();
-        let mut window_statistics = HashMap::new();
-        let mut module_statistics = HashMap::new();
-        let mut delay_statistics = HashMap::new();
+            util::enum_module(process_id, |module_name| -> bool {
+                let module_name = module_name.to_lowercase();
 
-        let mut monitor_count = 0;
-        loop {
-            monitor_count += 1;
-
-            // get all process
-            enum_process(|pid, name| {
-                process_statistics
-                    .entry(pid)
-                    .and_modify(|v: &mut (usize, String)| {
-                        v.0 = monitor_count;
-                    })
-                    .or_insert_with(|| {
-                        for cb in self.callbacks.iter_mut() {
-                            if !cb.received_notification(MonitorEvent::AddProcess(ProcessInfo {
-                                pid,
-                                name: name.to_owned(),
-                            })) {
-                                running.store(false, Ordering::SeqCst);
-                            }
-                        }
-                        (monitor_count, name.clone())
-                    });
-
-                if let Some(delay) = self.config.delay.get(&name) {
-                    match delay_statistics.entry(pid) {
-                        Entry::Occupied(mut o) => {
-                            let (_, d) = *o.get();
-                            if d <= self.config.monitor_interval {
-                                for cb in self.callbacks.iter_mut() {
-                                    if !cb.received_notification(MonitorEvent::DelayProcess(
-                                        ProcessInfo {
-                                            pid,
-                                            name: name.to_owned(),
-                                        },
-                                    )) {
-                                        running.store(false, Ordering::SeqCst);
-                                    }
-                                }
-                            } else {
-                                *o.get_mut() = (monitor_count, d - self.config.monitor_interval);
-                            }
-                        }
-                        Entry::Vacant(v) => {
-                            v.insert((monitor_count, delay.to_owned()));
-                        }
-                    }
-                } else if let Some(module) = self.config.module.get(&name) {
-                    match module_statistics.entry(pid.to_string() + name.as_str()) {
-                        Entry::Occupied(mut o) => {
-                            *o.get_mut() = monitor_count;
-                        }
-                        Entry::Vacant(v) => {
-                            let mut found_module = false;
-                            enum_module(pid, |module_name| -> bool {
-                                if module.to_lowercase() == module_name.to_lowercase() {
-                                    for cb in self.callbacks.iter_mut() {
-                                        if !cb.received_notification(MonitorEvent::IncludeModule(
-                                            ProcessInfo {
-                                                pid,
-                                                name: name.to_owned(),
-                                            },
-                                        )) {
-                                            running.store(false, Ordering::SeqCst);
-                                        }
-                                    }
-                                    found_module = true;
-                                    return false;
-                                }
-                                true
-                            });
-
-                            if found_module {
-                                v.insert(monitor_count);
-                            }
-                        }
-                    }
+                if module_name == "user32.dll" {
+                    notify(&listeners_clone, Event::GUIProcessStart(process_id));
                 }
-            });
-
-            // remove invalid module
-            module_statistics.retain(|_, v| *v == monitor_count);
-
-            // remove invalid delay
-            delay_statistics.retain(|_, v| v.0 == monitor_count);
-
-            // remove invalid process
-            process_statistics.retain(|k, v| {
-                if v.0 != monitor_count {
-                    for cb in self.callbacks.iter_mut() {
-                        if !cb.received_notification(MonitorEvent::DelProcess(ProcessInfo {
-                            pid: *k,
-                            name: v.1.to_owned(),
-                        })) {
-                            running.store(false, Ordering::SeqCst);
-                        }
-                    }
-                    return false;
-                }
+                notify(&listeners_clone, Event::ImageLoad(process_id, module_name));
                 true
             });
+        });
 
-            enum_window(|pid, title| {
-                window_statistics
-                    .entry(pid.to_string() + title.as_str())
-                    .and_modify(|v: &mut usize| {
-                        *v = monitor_count;
-                    })
-                    .or_insert_with(|| {
-                        if let Some(v) = process_statistics.get(&pid) {
-                            if self.config.delay.get(&v.1).is_none() {
-                                for cb in self.callbacks.iter_mut() {
-                                    if !cb.received_notification(MonitorEvent::NewWindow(
-                                        WindowInfo {
-                                            p: ProcessInfo {
-                                                pid,
-                                                name: v.1.clone(),
-                                            },
-                                            title: title.clone(),
-                                        },
-                                    )) {
-                                        running.store(false, Ordering::SeqCst);
-                                    }
-                                }
-                            }
-                        }
-                        monitor_count
-                    });
-            });
+        let _ = stop_trace_by_name("YInjectorMonitor");
 
-            // remove invalid window
-            window_statistics.retain(|_, v| *v == monitor_count);
+        *self.user_trace.borrow_mut() = Some(
+            UserTrace::new()
+                .named(String::from("YInjectorMonitor"))
+                .enable(process_provider)
+                .enable(win32k_provider)
+                .start_and_process()
+                .unwrap(),
+        );
+    }
 
-            if !running.load(Ordering::SeqCst) {
-                break;
-            }
-
-            std::thread::sleep(std::time::Duration::from_millis(
-                self.config.monitor_interval,
-            ));
+    pub fn stop(&self) {
+        if let Some(user_trace) = self.user_trace.borrow_mut().take() {
+            let _ = user_trace.stop();
         }
+    }
+}
+
+fn notify(listeners: &AListeners, event: Event) {
+    for l in listeners.lock().unwrap().iter_mut() {
+        l.trigger(event.clone());
+    }
+}
+
+fn process_callback(record: &EventRecord, schema_locator: &SchemaLocator, listeners: &AListeners) {
+    // https://github.com/repnz/etw-providers-docs/blob/master/Manifests-Win10-17134/Microsoft-Windows-Kernel-Process.xml
+    // https://github.com/everdox/InfinityHook?tab=readme-ov-file
+    match schema_locator.event_schema(record) {
+        Ok(schema) => match record.event_id() {
+            // ProcessStart
+            1 => {
+                let parser = Parser::create(record, &schema);
+                let process_id: u32 = parser.try_parse("ProcessID").unwrap();
+                // let parent_process_id: u32 = parser.try_parse("ParentProcessID").unwrap();
+                let image_name: String = parser.try_parse("ImageName").unwrap();
+
+                let path = Path::new(&image_name);
+                let file_name = path.file_name().unwrap().to_str().unwrap().to_lowercase();
+
+                notify(listeners, Event::ProcessStart(process_id, file_name));
+            }
+            2 => {
+                let parser = Parser::create(record, &schema);
+                let process_id: u32 = parser.try_parse("ProcessID").unwrap();
+                // let exit_code: u32 = parser.try_parse("ExitCode").unwrap();
+                let image_name: String = parser.try_parse("ImageName").unwrap();
+
+                let path = Path::new(&image_name);
+                let file_name = path.file_name().unwrap().to_str().unwrap().to_lowercase();
+
+                notify(listeners, Event::ProcessStop(process_id, file_name));
+            }
+            // ImageLoad
+            5 => {
+                let parser = Parser::create(record, &schema);
+                let process_id: u32 = parser.try_parse("ProcessID").unwrap();
+                let image_name: String = parser.try_parse("ImageName").unwrap();
+                // let image_base: u64 = parser.try_parse("ImageBase").unwrap();
+
+                let path = Path::new(&image_name);
+                let filename = path.file_name().unwrap().to_str().unwrap().to_lowercase();
+
+                notify(listeners, Event::ImageLoad(process_id, filename));
+            }
+            // ImageUnload
+            // 6 => {}
+            _ => {}
+        },
+        Err(err) => info!("Error {:?}", err),
+    };
+}
+
+fn win32k_callback(record: &EventRecord, schema_locator: &SchemaLocator, listeners: &AListeners) {
+    // https://github.com/jdu2600/Windows10EtwEvents/blob/master/manifest/Microsoft-Windows-Win32k.tsv
+    match schema_locator.event_schema(record) {
+        Ok(_schema) => {
+            let id = record.event_id();
+
+            match id {
+                // GUIProcessStart
+                84 => {
+                    notify(listeners, Event::GUIProcessStart(record.process_id()));
+                }
+                // GUIProcessStop
+                // 85 => {
+                //     notify(listeners, Event::GUIProcessStop(record.process_id()));
+                // }
+                _ => {
+                    // info!("==> {}", id)
+                }
+            }
+        }
+        Err(err) => info!("Error {:?}", err),
     }
 }

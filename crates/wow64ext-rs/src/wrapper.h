@@ -1,0 +1,1 @@
+int inject64(void *hProcess, const char *dll_path, unsigned int timeout);
