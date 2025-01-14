@@ -58,6 +58,7 @@ module = 'ws2_32.dll'
 ## todo
 
 - ❌ [bug] YAPI and wow64ext is unstable, recommend using native mode
+- Config Hot Reload
 
 ## ref
 
