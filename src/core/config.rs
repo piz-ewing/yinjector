@@ -1,138 +1,199 @@
-use anyhow::Context;
-use log::*;
-use serde::Deserialize;
 use std::{collections::HashMap, path::Path};
 
-use super::util;
+use log::*;
+use prettytable::{row, Table};
+use serde::Deserialize;
 
-pub const DEFAULT_CONFIG_FILE_NAME: &str = "config.toml";
+use super::util::{self, OptionExt};
 
 // for Deserialize
 #[derive(Deserialize)]
 struct TGlobal {
-    monitor_interval: Option<u64>,
-    native: Option<bool>,
-    exit_on_injected: Option<bool>,
+    mode: Option<String>,
+    exit: Option<bool>,
+}
+
+#[derive(Deserialize, Clone)]
+pub struct MixLimit {
+    pub module: Option<String>,
+    pub gui: Option<bool>,
+}
+
+#[derive(Deserialize, Clone)]
+pub struct Mix {
+    pub name: String,
+    pub dll: String,
+    pub delay: Option<u32>,
+    pub limit: Option<MixLimit>,
 }
 
 #[derive(Deserialize)]
 struct TConfig {
     global: Option<TGlobal>,
-    base: Option<HashMap<String, String>>,
-    window: Option<HashMap<String, String>>,
-    module: Option<HashMap<String, String>>,
-    delay: Option<HashMap<String, u64>>,
+    easy: Option<HashMap<String, String>>,
+    mix: Option<Vec<Mix>>,
+}
+
+pub struct Global {
+    pub mode: String,
+    pub exit: bool,
+}
+
+impl Global {
+    pub fn new() -> Self {
+        Self {
+            mode: "wow64ext".to_owned(),
+            exit: false,
+        }
+    }
 }
 
 pub struct Config {
-    pub monitor_interval: u64,
-    pub native: bool,
-    pub exit_on_injected: bool,
-    pub base: HashMap<String, String>,
-    pub window: HashMap<String, String>,
-    pub module: HashMap<String, String>,
-    pub delay: HashMap<String, u64>,
+    pub global: Global,
+    pub mix: HashMap<String, Mix>,
 }
 
 impl Config {
-    const DEFAULT_MONITOR_INTERVAL: u64 = 500;
-    const DEFAULT_NATIVE: bool = false;
-    const DEFAULT_EXIT_ON_INJECTED: bool = false;
-
-    pub fn parser(content: &str) -> anyhow::Result<Config> {
-        let raw_config: TConfig = toml::from_str(content).context("")?;
-
-        let mut config = Self {
-            monitor_interval: Self::DEFAULT_MONITOR_INTERVAL,
-            native: Self::DEFAULT_NATIVE,
-            exit_on_injected: Self::DEFAULT_EXIT_ON_INJECTED,
-            base: HashMap::new(),
-            window: HashMap::new(),
-            module: HashMap::new(),
-            delay: HashMap::new(),
-        };
-
-        if let Some(global) = raw_config.global {
-            if let Some(v) = global.monitor_interval {
-                config.monitor_interval = v;
-            }
-
-            if let Some(v) = global.native {
-                config.native = v;
-            }
-
-            if let Some(v) = global.exit_on_injected {
-                config.exit_on_injected = v;
-            }
-            info!("[+] monitor_interval {}ms", config.monitor_interval);
-            info!("[+] native {}", config.native);
-            info!("[+] exit_on_injected {}", config.exit_on_injected);
+    pub fn new() -> Self {
+        Self {
+            global: Global::new(),
+            mix: HashMap::new(),
         }
+    }
+}
 
-        if let Some(ps) = raw_config.base {
-            for (process_name, dll_path) in &ps {
-                if let Err(e) = config.add(process_name, dll_path) {
-                    warn!("{}", e);
-                }
-            }
-        }
+const DEFAULT_CONFIG_FILE_NAME: &str = "config.toml";
 
-        if let Some(ws) = raw_config.window {
-            for (process_name, title_name) in ws {
-                config.window.insert(process_name, title_name);
-            }
-        }
+fn defalut_path() -> String {
+    let program_path = std::env::current_exe()
+        .unwrap()
+        .parent()
+        .unwrap()
+        .join(DEFAULT_CONFIG_FILE_NAME);
 
-        if let Some(ms) = raw_config.module {
-            for (process_name, module_name) in ms {
-                config.module.insert(process_name, module_name);
-            }
-        }
-
-        if let Some(ds) = raw_config.delay {
-            for (process_name, delay) in ds {
-                config.delay.insert(process_name, delay);
-            }
-        }
-
-        if config.base.is_empty() {
-            warn!("[!] inject empty")
-        }
-
-        Ok(config)
+    if program_path.is_file() {
+        return util::adjust_canonicalization(program_path);
     }
 
-    fn add(&mut self, process_name: &str, dll_path: &str) -> anyhow::Result<()> {
-        // check dll file
-        let abs_dll_path = Path::new(&dll_path);
-        if abs_dll_path.is_file() {
-            let abs_dll_path = util::adjust_canonicalization(abs_dll_path);
+    let run_path = std::env::current_dir()
+        .unwrap()
+        .join(DEFAULT_CONFIG_FILE_NAME);
 
-            self.base
-                .insert(process_name.to_owned(), abs_dll_path.to_owned());
+    if run_path.is_file() {
+        return util::adjust_canonicalization(run_path);
+    }
 
-            info!("[+] {} -> {}", process_name, abs_dll_path);
-            return Ok(());
+    panic!("config not exist");
+}
+
+fn real_path(path: Option<&str>) -> String {
+    let Some(p) = path else {
+        return defalut_path();
+    };
+
+    let p = Path::new(p);
+    if !p.is_file() {
+        panic!("config not exist");
+    }
+
+    util::adjust_canonicalization(p)
+}
+
+fn real_dll_path(path: &str) -> String {
+    // check dll file
+    let abs = Path::new(&path);
+    if abs.is_file() {
+        return util::adjust_canonicalization(abs);
+    }
+
+    // not abs path
+    if !abs.is_absolute() {
+        let abs = std::env::current_exe()
+            .unwrap()
+            .parent()
+            .unwrap()
+            .join(path);
+        if abs.is_file() {
+            return util::adjust_canonicalization(abs);
+        }
+    }
+
+    panic!("dll {} not exist", path);
+}
+
+pub fn build(path: Option<&str>) -> Config {
+    let r = real_path(path);
+
+    let content = std::fs::read_to_string(r).unwrap();
+
+    let tcfg: TConfig = toml::from_str(&content).unwrap();
+    let mut cfg = Config::new();
+
+    if let Some(global) = tcfg.global {
+        if let Some(mode) = global.mode {
+            cfg.global.mode = mode;
         }
 
-        // not abs path
-        if !abs_dll_path.is_absolute() {
-            let abs_dll_path = std::env::current_exe()
-                .unwrap()
-                .parent()
-                .unwrap()
-                .join(dll_path);
-            if abs_dll_path.is_file() {
-                let abs_dll_path = util::adjust_canonicalization(abs_dll_path);
+        if let Some(exit) = global.exit {
+            cfg.global.exit = exit;
+        }
+    }
 
-                self.base
-                    .insert(process_name.to_owned(), abs_dll_path.to_owned());
+    if let Some(easy) = tcfg.easy {
+        for (name, dll) in easy.iter() {
+            cfg.mix.insert(
+                name.to_lowercase(),
+                Mix {
+                    name: name.to_lowercase(),
+                    dll: real_dll_path(dll),
+                    delay: None,
+                    limit: None,
+                },
+            );
+        }
+    }
 
-                info!("[+] {} --> {}", process_name, abs_dll_path);
-                return Ok(());
+    if let Some(mix) = tcfg.mix {
+        for mut t in mix {
+            t.dll = real_dll_path(&t.dll);
+            let name = t.name.to_lowercase();
+            if cfg.mix.insert(name.clone(), t).is_some() {
+                warn!("[!] {} exist and update", name);
             }
         }
-
-        anyhow::bail!(format!("dll file not exist {}", &dll_path))
     }
+
+    let mut table = Table::new();
+    table.add_row(row![
+        bFg->"mode", bFg->"exit", bFg->"name", bFg->"dll", bFg->"delay", bFg->"module", bFg->"gui"
+    ]);
+
+    for (_, t) in &cfg.mix {
+        if t.limit.is_some() {
+            table.add_row(row![
+                cfg.global.mode,
+                cfg.global.exit,
+                t.name.to_lowercase(),
+                t.dll.to_lowercase(),
+                t.delay.unwrap_or(0),
+                t.limit
+                    .unwrap_ref()
+                    .module
+                    .as_ref()
+                    .unwrap_or(&"None".to_string()),
+                t.limit.unwrap_ref().gui.as_ref().unwrap_or(&false),
+            ]);
+        } else {
+            table.add_row(row![
+                t.name.to_lowercase(),
+                t.dll.to_lowercase(),
+                t.delay.unwrap_or(0),
+                "None",
+                "None"
+            ]);
+        }
+    }
+    table.printstd();
+
+    cfg
 }

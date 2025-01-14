@@ -1,12 +1,14 @@
-## windows-injector
+## YInjector
+
 [![license](https://img.shields.io/badge/license-MIT-yellow.svg?style=flat)](https://github.com/piz-ewing/injector/blob/main/LICENSE)
 ![Language](https://img.shields.io/badge/language-rust-brightgreen)
 
 - ✨ Fusion injector
 - 👍 Easy to configure
-- 🚅 Automatically monitor processes
+- 🚅 Monitor base on ETW
 
 ## build
+
 ```bash
 # windows-x86
 cargo b --target=i686-pc-windows-msvc
@@ -19,38 +21,32 @@ $env:RUSTFLAGS="--remap-path-prefix $HOME=~"
 ```
 
 ## config
+
 ```toml
 [global]
-# monitor interval 50ms
-monitor_interval = 50
+mode = 'native' # 'native' 'yapi' 'wow64ext'
+exit = false # exit after injection
 
-# use native method to inject
-native = false
+[easy] # optional
+'x86.exe' = 'dlls/x86.dll'
 
-# exit after injection
-exit_on_injected = false
+[[mix]]
+name = 'x86.exe'
+dll = 'dlls/x86.dll'
+delay = 0            # optional
 
-[base]
-"a.exe" = 'a.dll'
-"b.exe" = '../b.dll'
-"c.exe" = 'c:\c.dll'
+[mix.limit] # optional
+module = 'user32.dll' # optional
+gui = true            # optional
 
-"x86.exe" = '.\dlls\x86\msg.dll'
-"x64.exe" = '.\dlls\x64\msg.dll'
+[[mix]]
+name = 'x64.exe'
+dll = 'dlls/x64.dll'
 
-# execute when module exists
-[module]
-"x86.exe" = "user32.dll"
-
-# execute when window title exists
-[window]
-"x86.exe" = "window title"
-
-# deferred x seconds execution, 5000 ms
-[delay]
-"x86.exe" = 5000
-
+[mix.limit]
+module = 'ws2_32.dll'
 ```
+
 ## run
 
 ```
@@ -60,27 +56,16 @@ exit_on_injected = false
 ![demo](./demo.png)
 
 ## todo
-- ✅ ~~Merge x86 and x64 injector~~
 
-- 📝 Better way for merge x86 and x64 injector
-
-- ⌨️ [More ways to inject](https://github.com/HackerajOfficial/injectAllTheThings)
-
-- ~~⌨️ organize 'window' injection code~~
-
-- ~~⌨️ organize 'module' injection code~~
-
-- ~~⌨️ organize 'delay' injection code~~
-
-- ❌ [bug] setting multiple targets
-
-- need to fix priority between modes
+- ❌ [bug] YAPI and wow64ext is unstable, recommend using native mode
 
 ## ref
 
-***thx***
+**_thx_**
 
 [YAPI -- Yet Another Process Injector](https://github.com/ez8-co/yapi.git) @ez8-co
+
+[rewolf-wow64ext](https://github.com/rwfpl/rewolf-wow64ext) @rwfpl
 
 [pretty-env-logger](https://github.com/seanmonstar/pretty-env-logger.git) @seanmonstar
 
