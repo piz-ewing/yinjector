@@ -28,7 +28,8 @@ pub trait Listener {
     fn trigger(&mut self, _: Event);
 }
 
-type AListeners = Arc<Mutex<Vec<Box<dyn Listener + 'static + Send + Sync>>>>;
+type ListenerBox = Box<dyn Listener + 'static + Send + Sync>;
+type AListeners = Arc<Mutex<Vec<ListenerBox>>>;
 
 #[derive(Default)]
 pub struct Monitor {
@@ -41,7 +42,7 @@ impl Monitor {
         Self::default()
     }
 
-    pub fn subscribe(&self, r: Box<dyn Listener + 'static + Send + Sync>) {
+    pub fn subscribe(&self, r: ListenerBox) {
         self.listeners.lock().unwrap().push(r)
     }
 
