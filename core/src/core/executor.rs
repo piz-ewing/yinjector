@@ -17,6 +17,7 @@ impl Injector {
     pub fn start(&self, path: Option<&str>) -> &Self {
         let m = Monitor::new();
         m.subscribe(Box::new(Controller::build(path)));
+
         info!("start <<<");
 
         m.start();
@@ -28,6 +29,7 @@ impl Injector {
     pub fn stop(&self) {
         if let Some(m) = self.monitor.take() {
             m.stop();
+
             info!("stop <<<");
         }
     }

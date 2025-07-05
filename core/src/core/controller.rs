@@ -49,14 +49,16 @@ impl Listener for Controller {
                     #[allow(clippy::needless_return)]
                     return;
                 } else {
-                    util::inject_to_process(
-                        &cfg.global.mode,
-                        cfg.global.exit,
-                        pid,
-                        v.name.clone(),
-                        v.dll.clone(),
-                        v.delay.unwrap_or(0),
-                    );
+                    unsafe {
+                        util::inject_to_process(
+                            &cfg.global.mode,
+                            cfg.global.exit,
+                            pid,
+                            v.name.clone(),
+                            v.dll.clone(),
+                            v.delay.unwrap_or(0),
+                        )
+                    };
                 }
             }
             Event::ProcessStop(pid, name) => {
@@ -78,7 +80,6 @@ impl Listener for Controller {
                 trace!("[+] GUIProcessStart {pid}");
 
                 let limit = v.limit.unwrap_mut();
-
                 let Some(_) = limit.gui.as_ref() else {
                     return;
                 };
@@ -87,14 +88,16 @@ impl Listener for Controller {
                     let r = self.config.read().unwrap();
                     let cfg = r.unwrap_ref();
 
-                    util::inject_to_process(
-                        &cfg.global.mode,
-                        cfg.global.exit,
-                        pid,
-                        v.name.clone(),
-                        v.dll.clone(),
-                        v.delay.unwrap_or(0),
-                    );
+                    unsafe {
+                        util::inject_to_process(
+                            &cfg.global.mode,
+                            cfg.global.exit,
+                            pid,
+                            v.name.clone(),
+                            v.dll.clone(),
+                            v.delay.unwrap_or(0),
+                        )
+                    };
 
                     let _ = c.remove(&pid);
                 } else {
@@ -110,7 +113,6 @@ impl Listener for Controller {
                 trace!("[+] ImageLoad: {pid} {name}");
 
                 let limit = v.limit.unwrap_mut();
-
                 let Some(m) = limit.module.as_ref() else {
                     return;
                 };
@@ -123,14 +125,16 @@ impl Listener for Controller {
                     let r = self.config.read().unwrap();
                     let cfg = r.unwrap_ref();
 
-                    util::inject_to_process(
-                        &cfg.global.mode,
-                        cfg.global.exit,
-                        pid,
-                        v.name.clone(),
-                        v.dll.clone(),
-                        v.delay.unwrap_or(0),
-                    );
+                    unsafe {
+                        util::inject_to_process(
+                            &cfg.global.mode,
+                            cfg.global.exit,
+                            pid,
+                            v.name.clone(),
+                            v.dll.clone(),
+                            v.delay.unwrap_or(0),
+                        )
+                    };
 
                     let _ = c.remove(&pid);
                 } else {

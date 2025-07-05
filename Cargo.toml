@@ -1,44 +1,15 @@
-[package]
-name = "yinjector"
-version = "0.2.1"
-edition = "2021"
+[workspace]
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-build = "build.rs"
+resolver = "3"
 
-[dependencies]
-yapi-rs = { path = "crates/yapi-rs" }
-
-ferrisetw = "1.2.0"
-pretty_env_logger = "0.5.0"
-log = "0.4.22"
-ctrlc = "3.4.5"
-anyhow = "1.0.95"
-local-encoding-ng = "*"
-serde = { version = "1.0.217", features = ["derive"] }
-toml = "0.8.19"
-scopeguard = "1"
-prettytable-rs = "^0.10"
-
-[target.'cfg(target_arch = "x86")'.dependencies]
-wow64ext-rs = { path = "crates/wow64ext-rs" }
-
-[dependencies.windows]
-version = "0"
-features = [
-    "Win32_System_Diagnostics_ToolHelp",
-    "Win32_Foundation",
-    "Win32_System_Threading",
-    "Win32_System_LibraryLoader",
-    "Win32_System_Memory",
-    "Win32_System_Diagnostics_Debug",
-    "Win32_Security",
-    "Win32_System_WindowsProgramming",
-    "Win32_UI",
-    "Win32_UI_WindowsAndMessaging",
-    "Win32_System_ProcessStatus",
+members = [
+  "core",
+  "test_dll"
 ]
+default-members =[]
 
-[build-dependencies]
-# must use msvc-compiler
-winres = "^0.1"
+[profile.release]
+lto = true
+opt-level = 3
+codegen-units = 1
+strip = true

@@ -21,6 +21,8 @@ pub enum Event {
 
     ImageLoad(u32, String),
     // ImageUnload(u32),
+
+    // Indicates the process has loaded user32.dll (likely a GUI process)
     GUIProcessStart(u32),
     // GUIProcessStop(u32),
 }
@@ -64,22 +66,24 @@ impl Monitor {
 
         // FIXME: Replay fake event, Events before etw takes effect may be lost.
         let listeners_clone = self.listeners.clone();
-        util::enum_process(|process_id, file_name| {
-            notify(
-                &listeners_clone,
-                Event::ProcessStart(process_id, file_name.to_lowercase()),
-            );
+        unsafe {
+            util::enum_process(|process_id, file_name| {
+                notify(
+                    &listeners_clone,
+                    Event::ProcessStart(process_id, file_name.to_lowercase()),
+                );
 
-            util::enum_module(process_id, |module_name| -> bool {
-                let module_name = module_name.to_lowercase();
+                util::enum_module(process_id, |module_name| -> bool {
+                    let module_name = module_name.to_lowercase();
 
-                if module_name == "user32.dll" {
-                    notify(&listeners_clone, Event::GUIProcessStart(process_id));
-                }
-                notify(&listeners_clone, Event::ImageLoad(process_id, module_name));
-                true
-            });
-        });
+                    if module_name == "user32.dll" {
+                        notify(&listeners_clone, Event::GUIProcessStart(process_id));
+                    }
+                    notify(&listeners_clone, Event::ImageLoad(process_id, module_name));
+                    true
+                });
+            })
+        };
 
         let _ = stop_trace_by_name("YInjectorMonitor");
 

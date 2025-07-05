@@ -20,7 +20,7 @@ fn main() {
         );
 
     if let Err(error) = res.compile() {
-        eprint!("{}", error);
+        eprint!("{error}");
         std::process::exit(1);
     }
     // }
