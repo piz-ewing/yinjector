@@ -3,7 +3,7 @@
 [![license](https://img.shields.io/badge/license-MIT-yellow.svg?style=flat)](https://github.com/piz-ewing/injector/blob/main/LICENSE)
 ![Language](https://img.shields.io/badge/language-rust-brightgreen)
 
-YInject is a configuration-driven Windows process injection tool based on ETW (Event Tracing for Windows), delivering precise, stable, low-overhead real-time injection.
+YInjector is a lightweight and stable DLL injection tool based on ETW (Event Tracing for Windows), offering real-time performance and configurable behavior.
 
 - ✨ Fuse injector
 - 👍 Configure easily
