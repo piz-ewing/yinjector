@@ -1,12 +1,12 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, RwLock};
 
-use log::*;
-
-use crate::core::util::{self, OptionExt};
+use log::trace;
 
 use super::config::{self, Config};
 use super::monitor::{Event, Listener};
+
+use crate::core::util::{self, OptionExt};
 
 pub struct Controller {
     config: Arc<RwLock<Option<Config>>>,
@@ -38,12 +38,15 @@ impl Listener for Controller {
                     return;
                 };
 
-                trace!("[+] ProcessStart: {} {}", pid, name);
+                trace!("[+] ProcessStart: {pid} {name}");
 
                 if v.limit.is_some() {
                     if self.cache.lock().unwrap().insert(pid, v.clone()).is_some() {
-                        panic!("no way!")
+                        panic!("duplicate cache insert for pid {pid:?}");
                     }
+
+                    // NOTE: Explicit return is here to prevent accidental fallthrough when future logic is added.
+                    #[allow(clippy::needless_return)]
                     return;
                 } else {
                     util::inject_to_process(
@@ -64,7 +67,7 @@ impl Listener for Controller {
                 let Some(_) = cfg.mix.get(&name) else {
                     return;
                 };
-                trace!("[-] ProcessStop: {} {}", pid, name);
+                trace!("[-] ProcessStop: {pid} {name}");
             }
             Event::GUIProcessStart(pid) => {
                 let mut c = self.cache.lock().unwrap();
@@ -72,7 +75,7 @@ impl Listener for Controller {
                     return;
                 };
 
-                trace!("[+] GUIProcessStart {}", pid);
+                trace!("[+] GUIProcessStart {pid}");
 
                 let limit = v.limit.unwrap_mut();
 
@@ -104,7 +107,7 @@ impl Listener for Controller {
                     return;
                 };
 
-                trace!("[+] ImageLoad: {} {}", pid, name);
+                trace!("[+] ImageLoad: {pid} {name}");
 
                 let limit = v.limit.unwrap_mut();
 

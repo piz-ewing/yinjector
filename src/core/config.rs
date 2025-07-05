@@ -1,6 +1,6 @@
 use std::{collections::HashMap, path::Path};
 
-use log::*;
+use log::warn;
 use prettytable::{row, Table};
 use serde::Deserialize;
 
@@ -118,7 +118,7 @@ fn real_dll_path(path: &str) -> String {
         }
     }
 
-    panic!("dll {} not exist", path);
+    panic!("dll {path} not exist");
 }
 
 pub fn build(path: Option<&str>) -> Config {
@@ -158,7 +158,7 @@ pub fn build(path: Option<&str>) -> Config {
             t.dll = real_dll_path(&t.dll);
             let name = t.name.to_lowercase();
             if cfg.mix.insert(name.clone(), t).is_some() {
-                warn!("[!] {} exist and update", name);
+                warn!("[!] {name} exist and update");
             }
         }
     }
@@ -168,7 +168,7 @@ pub fn build(path: Option<&str>) -> Config {
         bFg->"mode", bFg->"exit", bFg->"name", bFg->"dll", bFg->"delay", bFg->"module", bFg->"gui"
     ]);
 
-    for (_, t) in &cfg.mix {
+    for t in cfg.mix.values() {
         if t.limit.is_some() {
             table.add_row(row![
                 cfg.global.mode,

@@ -1,4 +1,3 @@
-use log::info;
 use std::cell::RefCell;
 use std::path::Path;
 use std::sync::Arc;
@@ -10,6 +9,8 @@ use ferrisetw::schema_locator::SchemaLocator;
 use ferrisetw::trace::UserTrace;
 use ferrisetw::trace::*;
 use ferrisetw::EventRecord;
+
+use log::error;
 
 use super::util;
 
@@ -149,7 +150,7 @@ fn process_callback(record: &EventRecord, schema_locator: &SchemaLocator, listen
             // 6 => {}
             _ => {}
         },
-        Err(err) => info!("Error {:?}", err),
+        Err(err) => error!("Error {err:?}"),
     };
 }
 
@@ -173,6 +174,6 @@ fn win32k_callback(record: &EventRecord, schema_locator: &SchemaLocator, listene
                 }
             }
         }
-        Err(err) => info!("Error {:?}", err),
+        Err(err) => error!("Error {err:?}"),
     }
 }

@@ -27,5 +27,5 @@ fn main() {
         Some(args[1].as_str())
     };
 
-    core::builder().start(cfg).wait_until(|| pause());
+    core::builder().start(cfg).wait_until(pause);
 }

@@ -1,8 +1,7 @@
-use log::*;
-use std::{ops::Not, path::Path, time::Duration};
-
 use local_encoding_ng::{Encoder, Encoding};
-
+use log::{debug, error, info, warn};
+use prettytable::{row, Table};
+use std::{ops::Not, path::Path, time::Duration};
 use windows::{
     core::s,
     Win32::{
@@ -16,8 +15,6 @@ use windows::{
         },
     },
 };
-
-use prettytable::{row, Table};
 
 // yapi
 use yapi_rs::yapi;
@@ -133,10 +130,10 @@ fn inject_by_yapi(pid: u32, name: &str, dll: &str) {
                 | PROCESS_VM_READ
                 | PROCESS_VM_WRITE
                 | PROCESS_VM_OPERATION,
-            FALSE,
+            false,
             pid,
         ) else {
-            error!("[!] open {} failed, code {:?}", name, GetLastError());
+            error!("[!] open {name} failed, code {:?}", GetLastError());
             return;
         };
 
@@ -159,21 +156,19 @@ fn inject_by_yapi(pid: u32, name: &str, dll: &str) {
             } else {
                 warn!("[!] yapi x86 -> x64");
             }
+        } else if is_wow64.as_bool().not() {
+            drop(_h_proc);
+            info!("[!] yapi -> native");
+            return inject_by_native(pid, name, dll);
         } else {
-            if is_wow64.as_bool().not() {
-                drop(_h_proc);
-                info!("[!] yapi -> native");
-                return inject_by_native(pid, name, dll);
-            } else {
-                warn!("[!] yapi x64 -> x86");
-            }
+            warn!("[!] yapi x64 -> x86");
         }
 
         let mut dll_acp = Encoding::ANSI.to_bytes(dll).unwrap();
         dll_acp.push(0);
 
         if yapi::yinject(
-            h_proc.0 as *mut ::core::ffi::c_void,
+            h_proc.0,
             dll_acp.as_ptr() as *const ::core::ffi::c_char,
             is_wow64.0,
         ) == 0
@@ -199,7 +194,7 @@ fn inject_by_wow64ext(pid: u32, name: &str, dll: &str) {
                 | PROCESS_VM_READ
                 | PROCESS_VM_WRITE
                 | PROCESS_VM_OPERATION,
-            FALSE,
+            false,
             pid,
         ) else {
             error!("[!] open {} failed, code {:?}", name, GetLastError());
@@ -269,10 +264,10 @@ fn inject_by_native(pid: u32, name: &str, dll: &str) {
                 | PROCESS_VM_READ
                 | PROCESS_VM_WRITE
                 | PROCESS_VM_OPERATION,
-            FALSE,
+            false,
             pid,
         ) else {
-            error!("[!] open {} failed, code {:?}", name, GetLastError());
+            error!("[!] open {name} failed, code {:?}", GetLastError());
             return;
         };
 
@@ -289,14 +284,12 @@ fn inject_by_native(pid: u32, name: &str, dll: &str) {
 
         if cfg!(target_arch = "x86") {
             if !is_wow64.as_bool() {
-                warn!("[!] x86_native inject {} x64 failed", name);
+                warn!("[!] x86_native inject {name} x64 failed");
                 return;
             }
-        } else {
-            if is_wow64.as_bool() {
-                warn!("[!] x64_native inject {} x86 failed", name);
-                return;
-            }
+        } else if is_wow64.as_bool() {
+            warn!("[!] x64_native inject {name} x86 failed");
+            return;
         }
 
         let mut dll_acp = Encoding::ANSI.to_bytes(dll).unwrap();
@@ -337,6 +330,8 @@ fn inject_by_native(pid: u32, name: &str, dll: &str) {
             h_proc,
             Some(std::ptr::null::<SECURITY_ATTRIBUTES>()),
             0_usize,
+            // SAFETY: load_lib is guaranteed to point to a valid LoadLibraryA function pointer
+            #[allow(clippy::missing_transmute_annotations)]
             Some(std::mem::transmute(load_lib)),
             Some(v_mem),
             0_u32,

@@ -24,7 +24,7 @@ prettytable-rs = "^0.10"
 wow64ext-rs = { path = "crates/wow64ext-rs" }
 
 [dependencies.windows]
-version = "0.59.0"
+version = "0"
 features = [
     "Win32_System_Diagnostics_ToolHelp",
     "Win32_Foundation",
